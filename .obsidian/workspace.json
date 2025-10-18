@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "0191866cebf1b7c3",
+        "id": "27caa0c8a2cde40d",
         "type": "tabs",
         "children": [
           {
-            "id": "60ccb8b74e272dda",
+            "id": "0d92bd18bf688419",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "design/background/app-overview.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "app-overview"
             }
           }
         ]
@@ -65,6 +65,20 @@
             }
           },
           {
+            "id": "5969981eb07b2c65",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "design/brainstorming/questioning.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "questioning"
+            }
+          },
+          {
             "id": "dd33aa2dc5ea9444",
             "type": "leaf",
             "state": {
@@ -78,7 +92,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 291.5
   },
   "right": {
     "id": "ffc60e9763cc384c",
@@ -94,7 +108,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "README.md",
+                "file": "design/background/app-overview.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +118,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for README"
+              "title": "Backlinks for app-overview"
             }
           },
           {
@@ -155,8 +169,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 200
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -169,8 +182,43 @@
       "bases:Create new base": false
     }
   },
-  "active": "60ccb8b74e272dda",
+  "active": "0d92bd18bf688419",
   "lastOpenFiles": [
-    "README.md"
+    "design/brainstorming/progress.md",
+    "design/brainstorming/questioning.md",
+    "context/design/brainstorming/questioning.md/20251018_163541.56523eae.md",
+    "context/design/brainstorming/questioning.md/steps/response.f63c5a40.md",
+    "context/design/brainstorming/questioning.md/20251018_163508.cefd215c.md",
+    "context/design/brainstorming/questioning.md/steps/prompt.e9ab89fb.md",
+    "context/design/brainstorming/questioning.md/20251018_163421.1ecacff0.md",
+    "context/design/brainstorming/questioning.md/steps/response.0f3c5333.md",
+    "context/design/brainstorming/questioning.md/20251018_163404.8e534b69.md",
+    "context/design/brainstorming/questioning.md/steps/prompt.be5505ae.md",
+    "context/design/brainstorming/questioning.md/steps/Nibble.57edd8cb.md",
+    "design/background/detailed/concept-rubric.md",
+    "design/background/concept-design-overview.md",
+    "context/design/brainstorming/questioning.md/20251018_163058.19e596af.md",
+    "context/design/brainstorming/questioning.md/steps/response.d2825308.md",
+    "context/design/brainstorming/questioning.md/20251018_163046.cd5c9101.md",
+    "context/design/brainstorming/questioning.md/steps/response.6d76b65d.md",
+    "design/background/app-overview.md",
+    "design/background/testing-concepts.md",
+    "context/design/brainstorming/questioning.md/20251018_162920.343017a2.md",
+    "context/design/brainstorming/questioning.md/steps/prompt.1b1de996.md",
+    "ctx.tmp-ddf5f93accde1d94",
+    "context/design/background/testing-concepts.md/20251007_212726.df614a5f.md",
+    "README.md",
+    "context/design/concepts/Notebook/implementation.md/20251018_151539.32c64227.md",
+    "context/src/concepts/Notebook/NotebookConcept.test.ts/20251018_153033.9fbcb44c.md",
+    "context/src/concepts/Notebook/NotebookConcept.test.ts",
+    "context/src/concepts/Notebook",
+    "context/design/concepts/Notebook/testing.md/20251018_152324.2860ecc3.md",
+    "context/design/concepts/Notebook/testing.md/steps",
+    "src/concepts/Notebook/NotebookConcept.test.ts",
+    "src/concepts/Notebook/NotebookConcept.ts",
+    "src/concepts/Notebook",
+    "context/design/concepts/Notebook/implementation.md/steps",
+    "context/design/concepts/Notebook",
+    "design/concepts/Notebook"
   ]
 }
