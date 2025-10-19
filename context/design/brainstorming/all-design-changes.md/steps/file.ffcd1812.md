@@ -1,0 +1,36 @@
+---
+timestamp: 'Sun Oct 19 2025 14:12:01 GMT-0400 (Eastern Daylight Time)'
+parent: '[[../20251019_141201.f01c551d.md]]'
+content_id: ffcd18127709e9c1f40d931bfb3adae501b354b9bd11b2c44c3cd1e1d8addebe
+---
+
+# file: src/concepts/Ingredient.ts
+
+```typescript
+// No dedicated Concept class for Ingredient.
+// The Ingredient concept defines a reusable data structure (interface)
+// that will be embedded within other concepts, such as Recipe and Version.
+// It does not manage its own top-level collection or actions.
+
+/**
+ * concept Ingredient
+ * purpose represent a specific item needed for a recipe.
+ * principle ingredients are foundational building blocks of recipes.
+ *
+ * state
+ * name : String
+ * quantity : String (e.g., "1 cup", "2 tablespoons", "to taste")
+ * unit : Optional\[String] (e.g., "cup", "tbsp", "g")
+ * notes : Optional\[String] (e.g., "freshly chopped")
+ *
+ * actions
+ * (Generally managed within Recipe/Version actions)
+ */
+export interface Ingredient {
+  name: string;
+  quantity: string;
+  unit?: string; // Optional
+  notes?: string; // Optional
+}
+
+```

@@ -4,7 +4,84 @@
     "type": "split",
     "children": [
       {
-        "id": "5337bf60d9b135e6",
+        "id": "517da487d944d6ee",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8f4bc0a8867ee7a9",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "context/Users/vivienhuang/6.1040/nibble/design/brainstorming/all-design-changes.md/20251019_140645.c032c783.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "20251019_140645.c032c783"
+            }
+          },
+          {
+            "id": "c6b278488e6b9b0c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "context/Users/vivienhuang/6.1040/nibble/design/brainstorming/all design changes.md/20251019_140527.c032c783.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "20251019_140527.c032c783"
+            }
+          },
+          {
+            "id": "ba118a4243483d53",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_214844.d2cf1d1d.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "20251018_214844.d2cf1d1d"
+            }
+          },
+          {
+            "id": "fa00fbbf74fa1342",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.42b14bf2.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "response.42b14bf2"
+            }
+          },
+          {
+            "id": "244c5c2f49df1c38",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.0539c6d5.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "response.0539c6d5"
+            }
+          }
+        ],
+        "currentTab": 2
+      },
+      {
+        "id": "57f7a92c7ffb8eba",
         "type": "tabs",
         "children": [
           {
@@ -13,12 +90,40 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "design/concepts/Version/test-output.md",
+                "file": "design-notes.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "test-output"
+              "title": "design-notes"
+            }
+          },
+          {
+            "id": "3ddc5aa382eb1cda",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "design/brainstorming/all-design-changes.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "all-design-changes"
+            }
+          },
+          {
+            "id": "772258ca23eb5fcf",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "README"
             }
           }
         ]
@@ -92,7 +197,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 291.5
+    "width": 502.5
   },
   "right": {
     "id": "ffc60e9763cc384c",
@@ -108,7 +213,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "design/concepts/Version/test-output.md",
+                "file": "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_214844.d2cf1d1d.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +223,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for test-output"
+              "title": "Backlinks for 20251018_214844.d2cf1d1d"
             }
           },
           {
@@ -182,43 +287,43 @@
       "bases:Create new base": false
     }
   },
-  "active": "539c37a77c59fc1b",
+  "active": "ba118a4243483d53",
   "lastOpenFiles": [
-    "design/concepts/Version/testing.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_124754.700a1c5b.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.9969cecc.md",
-    "design/concepts/VersionDraft/testing.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_124639.e09c6e9c.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.c4263a7c.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/VersionDraft/testing.md/20251019_124608.54c77ee8.md",
+    "design-notes.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_214844.d2cf1d1d.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_214115.340ba0da.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_213842.1ab4701a.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_213226.e94b2781.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_213120.2c52fe42.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Notebook/design-updates.md/20251019_131613.9f980274.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Notebook/design-updates.md/20251019_131459.8e9ae2f2.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Notebook/design-updates.md/20251019_131428.ac81dbc1.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_214119.9ce67212.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_214850.f500d5c6.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/20251018_213113.938aed55.md",
+    "design/concepts/Annotation/design-updates.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Annotation/testing.md/steps/response.7fe473a0.md",
+    "design/brainstorming/all-design-changes.md",
     "README.md",
-    "design/concepts/User/testing.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Notebook/testing.md/steps/_.3a59af90.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_123700.90037523.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.32a007d6.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_123547.df8777b2.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.56ef8c56.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.46fd921e.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/_.c43f6d91.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.42b14bf2.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.9969cecc.md",
     "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.4089903e.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.af56ca98.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.1281645b.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.45b7b259.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.d6ea93fa.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.e19d024c.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.2a0b4b28.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.9f6b8e71.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.06e60e4c.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.f1343dfb.md",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Recipe/RecipeConcept.test.ts",
-    "context/Users/vivienhuang/6.1040/nibble/deno.json",
-    "context/Users/vivienhuang/6.1040/nibble/src/concept_server.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/utils/types.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/VersionDraft/VersionDraftConcept.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/VersionDraft/VersionDraftConcept.test.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/VersionDraft",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/User/UserConcept.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/User",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Notebook/NotebookConcept.test.ts"
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.d0345e4b.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.6d76b65d.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.32a007d6.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_124754.700a1c5b.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Annotation/testing.md/steps/response.6d76b65d.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Annotation/testing.md/20251018_224156.967b7d81.md",
+    "design/concepts/Annotation/testing.md",
+    "src/concepts/Annotation/test.test.ts",
+    "src/concepts/Recipe/test.test.ts",
+    "src/concepts/Notebook/generatedtest.test.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Notebook/generatedtest.test.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Notebook/NotebookConcept.test.ts/generatedtest.test.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Step.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Ingredient.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Annotation/AnnotationConcept.ts",
+    "context/design/brainstorming/all-design-changes.md/steps",
+    "context/src/concepts/VersionDraft/VersionDraftConcept.ts"
   ]
 }

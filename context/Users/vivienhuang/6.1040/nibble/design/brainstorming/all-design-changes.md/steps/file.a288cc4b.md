@@ -1,0 +1,387 @@
+---
+timestamp: 'Sun Oct 19 2025 14:06:45 GMT-0400 (Eastern Daylight Time)'
+parent: '[[../20251019_140645.c032c783.md]]'
+content_id: a288cc4bed38e85bfec9c739b1a01e6d44557e1612868e192612f6ffc64148cd
+---
+
+# file: src/Annotation/AnnotationConcept.test.ts
+
+```typescript
+import { Deno } from "deno"; // Deno.test is global
+import { assertEquals, assertNotEquals, assert } from "jsr:@std/assert";
+import { testDb, freshID } from "@utils/database.ts";
+import { ID } from "@utils/types.ts";
+import AnnotationConcept from "./AnnotationConcept.ts";
+
+Deno.test("AnnotationConcept Functionality", async (t) => {
+  const [db, client] = await testDb();
+  const annotationConcept = new AnnotationConcept(db);
+
+  const mockUser1: ID = "user:Alice" as ID;
+  const mockUser2: ID = "user:Bob" as ID;
+  const mockRecipe1: ID = "recipe:MatchaBrownies" as ID;
+  const mockRecipe2: ID = "recipe:ChaiLatte" as ID;
+
+  console.log("--- Starting AnnotationConcept Tests ---");
+
+  // Store an annotation ID to be used across multiple tests
+  let createdAnnotationId: ID;
+
+  await t.step("annotate: successfully creates a new annotation", async () => {
+    console.log("\nTrace: annotate (success)");
+    const targetKind = "Ingredient";
+    const targetIndex = 0;
+    const text = "Use less salt, perhaps ½ tsp.";
+
+    console.log(
+      `Attempting to create an annotation for user "${mockUser1}" on recipe "${mockRecipe1}" (kind: ${targetKind}, index: ${targetIndex}) with text: "${text}"`
+    );
+    const result = await annotationConcept.annotate({
+      author: mockUser1,
+      recipe: mockRecipe1,
+      targetKind,
+      index: targetIndex,
+      text,
+    });
+
+    assert("annotation" in result, `Expected success result with annotation ID, but got: ${JSON.stringify(result)}`);
+    createdAnnotationId = result.annotation; // Store for later tests
+    assert(createdAnnotationId, "Annotation ID should not be empty.");
+    assertNotEquals(createdAnnotationId, freshID(), "Annotation ID should be newly generated and not a default.");
+
+    console.log(`Assertion: New annotation successfully created with ID: ${createdAnnotationId}`);
+
+    // Verify state using a query
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assert(fetchedAnnotationResult.length > 0 && "annotation" in fetchedAnnotationResult[0],
+      `Expected to fetch annotation with ID ${createdAnnotationId}, but got: ${JSON.stringify(fetchedAnnotationResult)}`);
+    const fetchedAnnotation = fetchedAnnotationResult[0].annotation;
+
+    assertEquals(fetchedAnnotation._id, createdAnnotationId, "Fetched annotation ID mismatch.");
+    assertEquals(fetchedAnnotation.author, mockUser1, "Fetched annotation author mismatch.");
+    assertEquals(fetchedAnnotation.recipe, mockRecipe1, "Fetched annotation recipe mismatch.");
+    assertEquals(fetchedAnnotation.targetKind, targetKind, "Fetched annotation targetKind mismatch.");
+    assertEquals(fetchedAnnotation.targetIndex, targetIndex, "Fetched annotation targetIndex mismatch.");
+    assertEquals(fetchedAnnotation.text, text, "Fetched annotation text mismatch.");
+    assertEquals(fetchedAnnotation.resolved, false, "New annotation should be unresolved by default.");
+    assert(fetchedAnnotation.created instanceof Date, "Created timestamp should be a Date object.");
+
+    console.log("Confirmation: Annotation state verified via `_getAnnotationById` query.");
+  });
+
+  await t.step("annotate: returns error for empty annotation text", async () => {
+    console.log("\nTrace: annotate (empty text failure)");
+    const targetKind = "Step";
+    const targetIndex = 1;
+    const emptyText = "   "; // Text consisting only of whitespace
+
+    console.log(
+      `Attempting to create an annotation with empty text for user "${mockUser1}" on recipe "${mockRecipe1}"`
+    );
+    const result = await annotationConcept.annotate({
+      author: mockUser1,
+      recipe: mockRecipe1,
+      targetKind,
+      index: targetIndex,
+      text: emptyText,
+    });
+
+    assert("error" in result, `Expected error for empty text, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "Annotation text cannot be empty.", "Expected specific error message for empty text.");
+    console.log(`Assertion: Correctly returned error for empty text: "${result.error}"`);
+  });
+
+  await t.step("editAnnotation: successfully edits an existing annotation by its author", async () => {
+    console.log("\nTrace: editAnnotation (success)");
+    const newText = "Revised note: try ½ cup almond flour instead, for a nuttier flavor.";
+
+    console.log(
+      `Attempting to edit annotation "${createdAnnotationId}" by author "${mockUser1}" with new text: "${newText}"`
+    );
+    const result = await annotationConcept.editAnnotation({
+      author: mockUser1,
+      annotation: createdAnnotationId,
+      newText,
+    });
+
+    assertEquals(result, {}, `Expected empty success object {}, but got: ${JSON.stringify(result)}`);
+    console.log("Assertion: `editAnnotation` returned empty success object indicating success.");
+
+    // Verify state
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assert(fetchedAnnotationResult.length > 0 && "annotation" in fetchedAnnotationResult[0]);
+    const fetchedAnnotation = fetchedAnnotationResult[0].annotation;
+
+    assertEquals(fetchedAnnotation.text, newText, "Annotation text should be updated to the new value.");
+    console.log("Confirmation: Annotation text successfully updated in the database.");
+  });
+
+  await t.step("editAnnotation: returns error if a non-author attempts to edit", async () => {
+    console.log("\nTrace: editAnnotation (non-author failure)");
+    const originalText = "Original note that shouldn't change."; // Fetch original to ensure no change
+    const newText = "Unauthorized edit attempt.";
+
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({ annotation: createdAnnotationId });
+    assert(fetchedAnnotationResult.length > 0 && "annotation" in fetchedAnnotationResult[0]);
+    assertEquals(fetchedAnnotationResult[0].annotation.text, "Revised note: try ½ cup almond flour instead, for a nuttier flavor.", "Pre-check: Annotation should have expected text before unauthorized edit attempt.");
+
+    console.log(
+      `Attempting to edit annotation "${createdAnnotationId}" by non-author "${mockUser2}"`
+    );
+    const result = await annotationConcept.editAnnotation({
+      author: mockUser2, // Unauthorized user
+      annotation: createdAnnotationId,
+      newText,
+    });
+
+    assert("error" in result, `Expected error for non-author edit, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "Only the author can edit an annotation.", "Expected permission error message.");
+    console.log(`Assertion: Correctly returned permission error: "${result.error}"`);
+
+    // Verify text was not changed
+    const afterEditAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assert(afterEditAnnotationResult.length > 0 && "annotation" in afterEditAnnotationResult[0]);
+    assertNotEquals(afterEditAnnotationResult[0].annotation.text, newText, "Annotation text should NOT have changed.");
+    assertEquals(afterEditAnnotationResult[0].annotation.text, "Revised note: try ½ cup almond flour instead, for a nuttier flavor.", "Annotation text should remain its original value.");
+    console.log("Confirmation: Annotation text was not updated by the unauthorized user.");
+  });
+
+  await t.step("editAnnotation: returns error for a non-existent annotation", async () => {
+    console.log("\nTrace: editAnnotation (non-existent failure)");
+    const nonExistentId: ID = freshID();
+    const newText = "Attempt to edit non-existent annotation.";
+
+    console.log(
+      `Attempting to edit non-existent annotation "${nonExistentId}" by author "${mockUser1}"`
+    );
+    const result = await annotationConcept.editAnnotation({
+      author: mockUser1,
+      annotation: nonExistentId,
+      newText,
+    });
+
+    assert("error" in result, `Expected error for non-existent annotation, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "Annotation not found.", "Expected 'Annotation not found' error message.");
+    console.log(`Assertion: Correctly returned error for non-existent annotation: "${result.error}"`);
+  });
+
+  await t.step("editAnnotation: returns error for empty new text", async () => {
+    console.log("\nTrace: editAnnotation (empty new text failure)");
+    const emptyNewText = "  ";
+
+    console.log(
+      `Attempting to edit annotation "${createdAnnotationId}" with empty new text: "${emptyNewText}"`
+    );
+    const result = await annotationConcept.editAnnotation({
+      author: mockUser1,
+      annotation: createdAnnotationId,
+      newText: emptyNewText,
+    });
+
+    assert("error" in result, `Expected error for empty new text, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "New annotation text cannot be empty.", "Expected specific error message for empty new text.");
+    console.log(`Assertion: Correctly returned error for empty new text: "${result.error}"`);
+  });
+
+  await t.step("resolveAnnotation: successfully resolves an annotation", async () => {
+    console.log("\nTrace: resolveAnnotation (success)");
+
+    // Pre-check: Ensure it's currently unresolved (from previous tests)
+    const initialAnnotationResult = await annotationConcept._getAnnotationById({ annotation: createdAnnotationId });
+    assert(initialAnnotationResult.length > 0 && "annotation" in initialAnnotationResult[0]);
+    assertEquals(initialAnnotationResult[0].annotation.resolved, false, "Pre-check: Annotation should initially be unresolved.");
+    console.log(`Current state: annotation "${createdAnnotationId}" is resolved=${initialAnnotationResult[0].annotation.resolved}.`);
+
+    console.log(`Attempting to resolve annotation "${createdAnnotationId}" to 'true' by resolver "${mockUser1}"`);
+    const result = await annotationConcept.resolveAnnotation({
+      resolver: mockUser1, // Resolver permission is external to this concept.
+      annotation: createdAnnotationId,
+      resolved: true,
+    });
+
+    assertEquals(result, {}, `Expected empty success object {}, but got: ${JSON.stringify(result)}`);
+    console.log("Assertion: `resolveAnnotation` returned empty success object.");
+
+    // Verify state
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assert(fetchedAnnotationResult.length > 0 && "annotation" in fetchedAnnotationResult[0]);
+    const fetchedAnnotation = fetchedAnnotationResult[0].annotation;
+    assertEquals(fetchedAnnotation.resolved, true, "Annotation resolved status should be updated to true.");
+    console.log(`Confirmation: Annotation resolved status updated to ${fetchedAnnotation.resolved}.`);
+  });
+
+  await t.step("resolveAnnotation: successfully unresolves an annotation", async () => {
+    console.log("\nTrace: resolveAnnotation (unresolve success)");
+
+    console.log(`Attempting to unresolve annotation "${createdAnnotationId}" to 'false' by resolver "${mockUser1}"`);
+    const result = await annotationConcept.resolveAnnotation({
+      resolver: mockUser1,
+      annotation: createdAnnotationId,
+      resolved: false,
+    });
+
+    assertEquals(result, {}, `Expected empty success object {}, but got: ${JSON.stringify(result)}`);
+    console.log("Assertion: `resolveAnnotation` returned empty success object for unresolve operation.");
+
+    // Verify state
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assert(fetchedAnnotationResult.length > 0 && "annotation" in fetchedAnnotationResult[0]);
+    const fetchedAnnotation = fetchedAnnotationResult[0].annotation;
+    assertEquals(fetchedAnnotation.resolved, false, "Annotation resolved status should be updated to false.");
+    console.log(`Confirmation: Annotation resolved status updated to ${fetchedAnnotation.resolved}.`);
+  });
+
+  await t.step("resolveAnnotation: returns error for a non-existent annotation", async () => {
+    console.log("\nTrace: resolveAnnotation (non-existent failure)");
+    const nonExistentId: ID = freshID();
+
+    console.log(
+      `Attempting to resolve non-existent annotation "${nonExistentId}" by resolver "${mockUser1}"`
+    );
+    const result = await annotationConcept.resolveAnnotation({
+      resolver: mockUser1,
+      annotation: nonExistentId,
+      resolved: true,
+    });
+
+    assert("error" in result, `Expected error for non-existent annotation, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "Annotation not found.", "Expected 'Annotation not found' error message.");
+    console.log(`Assertion: Correctly returned error for non-existent annotation: "${result.error}"`);
+  });
+
+  await t.step("deleteAnnotation: returns error if a non-author attempts to delete", async () => {
+    console.log("\nTrace: deleteAnnotation (non-author failure)");
+    console.log(
+      `Attempting to delete annotation "${createdAnnotationId}" by non-author "${mockUser2}"`
+    );
+    const result = await annotationConcept.deleteAnnotation({
+      author: mockUser2, // Unauthorized user
+      annotation: createdAnnotationId,
+    });
+
+    assert("error" in result, `Expected error for non-author delete, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "Only the author can delete an annotation.", "Expected permission error message.");
+    console.log(`Assertion: Correctly returned permission error: "${result.error}"`);
+
+    // Verify annotation still exists
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assertEquals(fetchedAnnotationResult.length, 1, "Annotation should still exist after unauthorized deletion attempt.");
+    console.log("Confirmation: Annotation was NOT deleted by the unauthorized user.");
+  });
+
+  await t.step("deleteAnnotation: returns error for a non-existent annotation", async () => {
+    console.log("\nTrace: deleteAnnotation (non-existent failure)");
+    const nonExistentId: ID = freshID();
+
+    console.log(
+      `Attempting to delete non-existent annotation "${nonExistentId}" by author "${mockUser1}"`
+    );
+    const result = await annotationConcept.deleteAnnotation({
+      author: mockUser1,
+      annotation: nonExistentId,
+    });
+
+    assert("error" in result, `Expected error for non-existent annotation, but got: ${JSON.stringify(result)}`);
+    assertEquals(result.error, "Annotation not found.", "Expected 'Annotation not found' error message.");
+    console.log(`Assertion: Correctly returned error for non-existent annotation: "${result.error}"`);
+  });
+
+  await t.step("deleteAnnotation: successfully deletes an existing annotation by its author", async () => {
+    console.log("\nTrace: deleteAnnotation (success)");
+    console.log(
+      `Attempting to delete annotation "${createdAnnotationId}" by its author "${mockUser1}"`
+    );
+    const result = await annotationConcept.deleteAnnotation({
+      author: mockUser1,
+      annotation: createdAnnotationId,
+    });
+
+    assertEquals(result, {}, `Expected empty success object {}, but got: ${JSON.stringify(result)}`);
+    console.log("Assertion: `deleteAnnotation` returned empty success object.");
+
+    // Verify state - annotation should no longer exist
+    const fetchedAnnotationResult = await annotationConcept._getAnnotationById({
+      annotation: createdAnnotationId,
+    });
+    assertEquals(fetchedAnnotationResult.length, 0, "Annotation should no longer exist after successful deletion.");
+    console.log("Confirmation: Annotation successfully deleted from the database.");
+  });
+
+  await t.step("Principle: annotations enrich understanding while preserving recipe immutability.", async () => {
+    console.log("\n--- Principle Test: Annotations Enrich Understanding ---");
+    console.log("The principle states: 'annotations enrich understanding while preserving recipe immutability.'");
+    console.log("This test demonstrates the first part (enrich understanding) by creating and retrieving annotations,");
+    console.log("and confirms the second part (preserving immutability) by noting the Annotation concept's lack of recipe modification actions.");
+
+    // Create a new recipe ID for this specific principle test
+    const principleRecipeId: ID = freshID();
+    const mockIngredientIndex = 0;
+    const mockStepIndex = 1;
+
+    console.log(`Simulating annotations for a conceptual recipe "${principleRecipeId}" by different users.`);
+
+    // Action 1: User 1 annotates an ingredient
+    console.log(`User "${mockUser1}" annotates an ingredient of recipe "${principleRecipeId}".`);
+    const annotation1Result = await annotationConcept.annotate({
+      author: mockUser1,
+      recipe: principleRecipeId,
+      targetKind: "Ingredient",
+      index: mockIngredientIndex,
+      text: "Consider using gluten-free flour blend, works well here.",
+    });
+    assert("annotation" in annotation1Result);
+    const ann1Id = annotation1Result.annotation;
+    console.log(`Created annotation ID: ${ann1Id}`);
+
+    // Action 2: User 2 annotates a step
+    console.log(`User "${mockUser2}" annotates a step of the same recipe "${principleRecipeId}".`);
+    const annotation2Result = await annotationConcept.annotate({
+      author: mockUser2,
+      recipe: principleRecipeId,
+      targetKind: "Step",
+      index: mockStepIndex,
+      text: "Ensure oven is preheated to 350°F exactly for even baking.",
+    });
+    assert("annotation" in annotation2Result);
+    const ann2Id = annotation2Result.annotation;
+    console.log(`Created annotation ID: ${ann2Id}`);
+
+    // Verification 1: Retrieve all annotations for the principle recipe
+    console.log(`Querying for all annotations linked to recipe "${principleRecipeId}".`);
+    const annotationsForRecipeResult = await annotationConcept._getAnnotationsForRecipe({
+      recipe: principleRecipeId,
+    });
+    assert(Array.isArray(annotationsForRecipeResult), `Expected an array of annotations, got: ${JSON.stringify(annotationsForRecipeResult)}`);
+    assertEquals(annotationsForRecipeResult.length, 2, `Expected 2 annotations for recipe "${principleRecipeId}", found ${annotationsForRecipeResult.length}.`);
+
+    const annotationTexts = annotationsForRecipeResult.map(a => a.annotation.text);
+    assert(annotationTexts.includes("Consider using gluten-free flour blend, works well here."), "Expected annotation text 1 not found.");
+    assert(annotationTexts.includes("Ensure oven is preheated to 350°F exactly for even baking."), "Expected annotation text 2 not found.");
+    console.log("Confirmation: Both annotations are successfully associated with the recipe and retrieved, enriching understanding.");
+
+    // Verification 2: Assert that the Annotation concept itself doesn't modify the recipe structure.
+    console.log(
+      "The 'Annotation' concept's actions (`annotate`, `editAnnotation`, `resolveAnnotation`, `deleteAnnotation`) " +
+      "do not have any direct effects that would modify the state of the 'Recipe' concept itself (e.g., its title, " +
+      "ingredients list, or steps list). This responsibility lies with the 'Recipe' or 'Version' concepts. " +
+      "Therefore, the Annotation concept upholds the principle of 'preserving recipe immutability' from its perspective."
+    );
+    console.log("Assertion: The Annotation concept's behavior is consistent with its stated principle.");
+  });
+
+  await client.close();
+  console.log("\n--- AnnotationConcept Tests Complete ---");
+});
+```

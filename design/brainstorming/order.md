@@ -1,1 +1,0 @@
-#prompt what order of concepts should i go in for implementation?
