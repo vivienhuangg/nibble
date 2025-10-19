@@ -1,10 +1,8 @@
-[@implementation](implementation.md)
-
-[@testing-concepts](../../background/testing-concepts.md)
-
-# test: Annotation
-
-# response:
+---
+timestamp: 'Sat Oct 18 2025 22:54:07 GMT-0400 (Eastern Daylight Time)'
+parent: '[[../20251018_225407.1f8700ea.md]]'
+content_id: a288cc4bed38e85bfec9c739b1a01e6d44557e1612868e192612f6ffc64148cd
+---
 
 # file: src/Annotation/AnnotationConcept.test.ts
 
