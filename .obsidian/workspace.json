@@ -4,21 +4,41 @@
     "type": "split",
     "children": [
       {
-        "id": "27caa0c8a2cde40d",
+        "id": "e2fb252240435581",
         "type": "tabs",
         "children": [
           {
-            "id": "0d92bd18bf688419",
+            "id": "fe6d0c77c7f1cc1f",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "design/background/app-overview.md",
+                "file": "design/concepts/Recipe/implementation.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "app-overview"
+              "title": "implementation"
+            }
+          }
+        ]
+      },
+      {
+        "id": "1261b79353ead052",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e9243903b2988616",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "design/brainstorming/checklist.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "checklist"
             }
           }
         ]
@@ -108,7 +128,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "design/background/app-overview.md",
+                "file": "design/concepts/Recipe/implementation.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +138,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for app-overview"
+              "title": "Backlinks for implementation"
             }
           },
           {
@@ -182,43 +202,43 @@
       "bases:Create new base": false
     }
   },
-  "active": "0d92bd18bf688419",
+  "active": "fe6d0c77c7f1cc1f",
   "lastOpenFiles": [
-    "design/brainstorming/progress.md",
-    "design/brainstorming/questioning.md",
-    "context/design/brainstorming/questioning.md/20251018_163541.56523eae.md",
-    "context/design/brainstorming/questioning.md/steps/response.f63c5a40.md",
-    "context/design/brainstorming/questioning.md/20251018_163508.cefd215c.md",
-    "context/design/brainstorming/questioning.md/steps/prompt.e9ab89fb.md",
-    "context/design/brainstorming/questioning.md/20251018_163421.1ecacff0.md",
-    "context/design/brainstorming/questioning.md/steps/response.0f3c5333.md",
-    "context/design/brainstorming/questioning.md/20251018_163404.8e534b69.md",
-    "context/design/brainstorming/questioning.md/steps/prompt.be5505ae.md",
-    "context/design/brainstorming/questioning.md/steps/Nibble.57edd8cb.md",
-    "design/background/detailed/concept-rubric.md",
-    "design/background/concept-design-overview.md",
-    "context/design/brainstorming/questioning.md/20251018_163058.19e596af.md",
-    "context/design/brainstorming/questioning.md/steps/response.d2825308.md",
-    "context/design/brainstorming/questioning.md/20251018_163046.cd5c9101.md",
-    "context/design/brainstorming/questioning.md/steps/response.6d76b65d.md",
-    "design/background/app-overview.md",
-    "design/background/testing-concepts.md",
-    "context/design/brainstorming/questioning.md/20251018_162920.343017a2.md",
-    "context/design/brainstorming/questioning.md/steps/prompt.1b1de996.md",
-    "ctx.tmp-ddf5f93accde1d94",
-    "context/design/background/testing-concepts.md/20251007_212726.df614a5f.md",
-    "README.md",
-    "context/design/concepts/Notebook/implementation.md/20251018_151539.32c64227.md",
-    "context/src/concepts/Notebook/NotebookConcept.test.ts/20251018_153033.9fbcb44c.md",
-    "context/src/concepts/Notebook/NotebookConcept.test.ts",
-    "context/src/concepts/Notebook",
-    "context/design/concepts/Notebook/testing.md/20251018_152324.2860ecc3.md",
-    "context/design/concepts/Notebook/testing.md/steps",
-    "src/concepts/Notebook/NotebookConcept.test.ts",
-    "src/concepts/Notebook/NotebookConcept.ts",
-    "src/concepts/Notebook",
-    "context/design/concepts/Notebook/implementation.md/steps",
-    "context/design/concepts/Notebook",
-    "design/concepts/Notebook"
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/20251018_220358.ed204810.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/response.543d70ea.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/20251018_220335.73e3f561.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/implement.3f99c186.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/Nibble.7a04ef93.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.1bf7fdfc.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.2086d81d.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.db39d951.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.331f5a1f.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/file.f007798c.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.5da05fda.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.ee4d1e5e.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.534e93ad.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/Generic Parameters.087161ea.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/approach.5df2171f.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.fa3ad648.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.3eb68380.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps/_.3a59af90.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md/steps",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe/implementation.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Recipe",
+    "design/concepts/Recipe/Recipe.md",
+    "design/concepts/Recipe/implementation.md",
+    "design/concepts/Recipe/design-updates.md",
+    "design/brainstorming/checklist.md",
+    "design/concepts/VersionDraft/implementation.md",
+    "design/concepts/VersionDraft/design-updates.md",
+    "design/concepts/Version/implementation.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Step/design-updates.md/steps",
+    "src/concepts/Step.ts",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Step/implementation.md/steps",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Step",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/User/design-updates.md/steps",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/User",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/steps",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient"
   ]
 }
