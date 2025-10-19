@@ -21,7 +21,7 @@
     requires recipe exists; versionNum unique for recipe (e.g., "1.0", "1.1", "2.0"); ingredients/steps must be well-formed\
     effects adds new version linked to recipe, sets `created`
 *   `deleteVersion(requester, version)`\
-    requires requester = version.author ∨ requester = recipe.owner\
+    requires requester = version.author  requester = recipe.owner\
     effects removes version
 *   `draftVersionWithAI(author, recipe, goal, options) → VersionDraft`\
     requires recipe exists; goal ≠ ""\
