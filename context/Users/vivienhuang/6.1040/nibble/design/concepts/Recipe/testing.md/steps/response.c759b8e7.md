@@ -1,9 +1,8 @@
-[@implementation](implementation.md)
-
-[@testing-concepts](../../background/testing-concepts.md)
-
-# test: Recipe
-
+---
+timestamp: 'Sat Oct 18 2025 22:19:10 GMT-0400 (Eastern Daylight Time)'
+parent: '[[../20251018_221910.706ceba3.md]]'
+content_id: c759b8e7601ad519863f6803d2c76d23fe3c7e33e68406620d40d41486328517
+---
 
 # response:
 

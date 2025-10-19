@@ -1,6 +1,19 @@
-import { type Collection, type Db, ObjectId } from "npm:mongodb";
+---
+timestamp: 'Sat Oct 18 2025 22:18:02 GMT-0400 (Eastern Daylight Time)'
+parent: '[[../20251018_221802.e5511abe.md]]'
+content_id: 543d70ea07cff75ee1b29c626d479989e14818ac4b70ad9d51da7c0d88f26e61
+---
+
+# response:
+
+Here's the implementation for the `Recipe` concept, following the provided guidelines and structure.
+
+```typescript
+// file: src/concepts/Recipe/RecipeConcept.ts
+
+import { Collection, Db, ObjectId } from "npm:mongodb";
+import { ID, Empty } from "@utils/types.ts";
 import { freshID } from "@utils/database.ts";
-import type { Empty, ID } from "@utils/types.ts";
 
 // Declare collection prefix, use concept name
 const PREFIX = "Recipe" + ".";
@@ -68,19 +81,21 @@ export default class RecipeConcept {
    *
    * **effects** adds new recipe with empty tag set, sets creation/update times; returns the new recipe's ID
    */
-  async createRecipe({
-    owner,
-    title,
-    ingredients,
-    steps,
-    description,
-  }: {
-    owner: User;
-    title: string;
-    ingredients: Ingredient[];
-    steps: Step[];
-    description?: string;
-  }): Promise<{ recipe: RecipeId } | { error: string }> {
+  async createRecipe(
+    {
+      owner,
+      title,
+      ingredients,
+      steps,
+      description,
+    }: {
+      owner: User;
+      title: string;
+      ingredients: Ingredient[];
+      steps: Step[];
+      description?: string;
+    },
+  ): Promise<{ recipe: RecipeId } | { error: string }> {
     // Requires: owner exists (assumed valid ID for this concept's scope, actual check in sync)
     if (!owner) {
       return { error: "Owner ID must be provided." };
@@ -124,11 +139,7 @@ export default class RecipeConcept {
       await this.recipes.insertOne(newRecipe);
       return { recipe: newRecipeId };
     } catch (e) {
-      console.error(
-        `Failed to create recipe: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to create recipe: ${e.message}`);
       return { error: "Failed to create recipe due to a database error." };
     }
   }
@@ -140,13 +151,9 @@ export default class RecipeConcept {
    *
    * **effects** tag ∈ recipe.tags
    */
-  async addTag({
-    recipe,
-    tag,
-  }: {
-    recipe: RecipeId;
-    tag: string;
-  }): Promise<Empty | { error: string }> {
+  async addTag(
+    { recipe, tag }: { recipe: RecipeId; tag: string },
+  ): Promise<Empty | { error: string }> {
     if (!recipe) {
       return { error: "Recipe ID must be provided." };
     }
@@ -165,11 +172,7 @@ export default class RecipeConcept {
       }
       return {};
     } catch (e) {
-      console.error(
-        `Failed to add tag to recipe ${recipe}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to add tag to recipe ${recipe}: ${e.message}`);
       return { error: "Failed to add tag due to a database error." };
     }
   }
@@ -181,13 +184,9 @@ export default class RecipeConcept {
    *
    * **effects** tag ∉ recipe.tags
    */
-  async removeTag({
-    recipe,
-    tag,
-  }: {
-    recipe: RecipeId;
-    tag: string;
-  }): Promise<Empty | { error: string }> {
+  async removeTag(
+    { recipe, tag }: { recipe: RecipeId; tag: string },
+  ): Promise<Empty | { error: string }> {
     if (!recipe) {
       return { error: "Recipe ID must be provided." };
     }
@@ -197,10 +196,9 @@ export default class RecipeConcept {
 
     try {
       // Check if the recipe exists and has the tag first (part of requires)
-      const existingRecipe = await this.recipes.findOne({
-        _id: recipe,
-        tags: tag,
-      });
+      const existingRecipe = await this.recipes.findOne(
+        { _id: recipe, tags: tag },
+      );
       if (!existingRecipe) {
         // This covers both "recipe not found" and "tag not present"
         return { error: "Recipe not found or tag is not present on recipe." };
@@ -218,11 +216,7 @@ export default class RecipeConcept {
       }
       return {};
     } catch (e) {
-      console.error(
-        `Failed to remove tag from recipe ${recipe}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to remove tag from recipe ${recipe}: ${e.message}`);
       return { error: "Failed to remove tag due to a database error." };
     }
   }
@@ -234,13 +228,9 @@ export default class RecipeConcept {
    *
    * **effects** removes recipe and triggers cascade deletion of related Versions and Annotations (via sync)
    */
-  async deleteRecipe({
-    requester,
-    recipe,
-  }: {
-    requester: User;
-    recipe: RecipeId;
-  }): Promise<Empty | { error: string }> {
+  async deleteRecipe(
+    { requester, recipe }: { requester: User; recipe: RecipeId },
+  ): Promise<Empty | { error: string }> {
     if (!requester || !recipe) {
       return { error: "Requester ID and Recipe ID must be provided." };
     }
@@ -253,8 +243,7 @@ export default class RecipeConcept {
 
       if (existingRecipe.owner !== requester) {
         return {
-          error:
-            "Requester is not the owner of the recipe and cannot delete it.",
+          error: "Requester is not the owner of the recipe and cannot delete it.",
         };
       }
 
@@ -265,11 +254,7 @@ export default class RecipeConcept {
       }
       return {};
     } catch (e) {
-      console.error(
-        `Failed to delete recipe ${recipe}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to delete recipe ${recipe}: ${e.message}`);
       return { error: "Failed to delete recipe due to a database error." };
     }
   }
@@ -283,21 +268,23 @@ export default class RecipeConcept {
    *
    * **effects** updates specified fields and `updated` timestamp.
    */
-  async updateRecipeDetails({
-    owner,
-    recipe,
-    newTitle,
-    newDescription,
-    newIngredients,
-    newSteps,
-  }: {
-    owner: User;
-    recipe: RecipeId;
-    newTitle?: string;
-    newDescription?: string;
-    newIngredients?: Ingredient[];
-    newSteps?: Step[];
-  }): Promise<Empty | { error: string }> {
+  async updateRecipeDetails(
+    {
+      owner,
+      recipe,
+      newTitle,
+      newDescription,
+      newIngredients,
+      newSteps,
+    }: {
+      owner: User;
+      recipe: RecipeId;
+      newTitle?: string;
+      newDescription?: string;
+      newIngredients?: Ingredient[];
+      newSteps?: Step[];
+    },
+  ): Promise<Empty | { error: string }> {
     if (!owner || !recipe) {
       return { error: "Owner ID and Recipe ID must be provided." };
     }
@@ -331,9 +318,7 @@ export default class RecipeConcept {
         }
         for (const ing of newIngredients) {
           if (!ing.name || !ing.quantity) {
-            return {
-              error: "Each new ingredient must have a name and quantity.",
-            };
+            return { error: "Each new ingredient must have a name and quantity." };
           }
         }
         updateFields.ingredients = newIngredients;
@@ -372,11 +357,7 @@ export default class RecipeConcept {
       }
       return {};
     } catch (e) {
-      console.error(
-        `Failed to update recipe ${recipe}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to update recipe ${recipe}: ${e.message}`);
       return { error: "Failed to update recipe due to a database error." };
     }
   }
@@ -389,11 +370,9 @@ export default class RecipeConcept {
    *
    * **effects** returns the full Recipe document
    */
-  async _getRecipeById({
-    recipe,
-  }: {
-    recipe: RecipeId;
-  }): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
+  async _getRecipeById(
+    { recipe }: { recipe: RecipeId },
+  ): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
     if (!recipe) {
       return { error: "Recipe ID must be provided." };
     }
@@ -405,11 +384,7 @@ export default class RecipeConcept {
       }
       return { recipe: [foundRecipe] }; // Queries return an array
     } catch (e) {
-      console.error(
-        `Failed to retrieve recipe ${recipe}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to retrieve recipe ${recipe}: ${e.message}`);
       return { error: "Failed to retrieve recipe due to a database error." };
     }
   }
@@ -421,11 +396,9 @@ export default class RecipeConcept {
    *
    * **effects** returns all recipes owned by the specified user
    */
-  async _listRecipesByOwner({
-    owner,
-  }: {
-    owner: User;
-  }): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
+  async _listRecipesByOwner(
+    { owner }: { owner: User },
+  ): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
     if (!owner) {
       return { error: "Owner ID must be provided." };
     }
@@ -434,11 +407,7 @@ export default class RecipeConcept {
       const recipes = await this.recipes.find({ owner }).toArray();
       return { recipe: recipes };
     } catch (e) {
-      console.error(
-        `Failed to list recipes for owner ${owner}: ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to list recipes for owner ${owner}: ${e.message}`);
       return { error: "Failed to list recipes due to a database error." };
     }
   }
@@ -450,11 +419,9 @@ export default class RecipeConcept {
    *
    * **effects** returns all recipes containing the specified tag
    */
-  async _searchRecipesByTag({
-    tag,
-  }: {
-    tag: string;
-  }): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
+  async _searchRecipesByTag(
+    { tag }: { tag: string },
+  ): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
     if (!tag || tag.trim() === "") {
       return { error: "Tag cannot be empty for search." };
     }
@@ -463,12 +430,9 @@ export default class RecipeConcept {
       const recipes = await this.recipes.find({ tags: tag }).toArray();
       return { recipe: recipes };
     } catch (e) {
-      console.error(
-        `Failed to search recipes by tag '${tag}': ${
-          e instanceof Error ? e.message : String(e)
-        }`,
-      );
+      console.error(`Failed to search recipes by tag '${tag}': ${e.message}`);
       return { error: "Failed to search recipes due to a database error." };
     }
   }
 }
+```

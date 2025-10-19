@@ -1,13 +1,8 @@
-[@concept-design-overview](../../background/concept-design-overview.md)
-
-[@concept-specifications](../../background/concept-specifications.md)
-
-[@implementing-concepts](../../background/implementing-concepts.md)
-
-[@app-overview](../../background/app-overview.md)
-
-[@Annotation](Annotation.md)
-# implement: Annotation
+---
+timestamp: 'Sat Oct 18 2025 22:39:03 GMT-0400 (Eastern Daylight Time)'
+parent: '[[../20251018_223903.35f646f2.md]]'
+content_id: 7fe473a0e6b28e1a8a8c3221d371d9c16323204d4475cfc9682b330bfc2a5368
+---
 
 # response:
 

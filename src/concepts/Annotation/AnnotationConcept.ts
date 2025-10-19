@@ -1,20 +1,6 @@
-[@concept-design-overview](../../background/concept-design-overview.md)
-
-[@concept-specifications](../../background/concept-specifications.md)
-
-[@implementing-concepts](../../background/implementing-concepts.md)
-
-[@app-overview](../../background/app-overview.md)
-
-[@Annotation](Annotation.md)
-# implement: Annotation
-
-# response:
-
-```typescript
-import { Collection, Db } from "npm:mongodb";
-import { Empty, ID } from "@utils/types.ts";
+import type { Collection, Db } from "npm:mongodb";
 import { freshID } from "@utils/database.ts";
+import type { Empty, ID } from "@utils/types.ts";
 
 // Declare collection prefix, use concept name
 const PREFIX = "Annotation" + ".";
@@ -125,7 +111,9 @@ export default class AnnotationConcept {
       return { error: "New annotation text cannot be empty." };
     }
 
-    const existingAnnotation = await this.annotations.findOne({ _id: annotation });
+    const existingAnnotation = await this.annotations.findOne({
+      _id: annotation,
+    });
     if (!existingAnnotation) {
       return { error: "Annotation not found." };
     }
@@ -136,7 +124,7 @@ export default class AnnotationConcept {
     try {
       await this.annotations.updateOne(
         { _id: annotation },
-        { $set: { text: newText.trim() } }
+        { $set: { text: newText.trim() } },
       );
       return {};
     } catch (e) {
@@ -162,7 +150,9 @@ export default class AnnotationConcept {
     annotation: ID;
     resolved: boolean;
   }): Promise<Empty | { error: string }> {
-    const existingAnnotation = await this.annotations.findOne({ _id: annotation });
+    const existingAnnotation = await this.annotations.findOne({
+      _id: annotation,
+    });
     if (!existingAnnotation) {
       return { error: "Annotation not found." };
     }
@@ -172,7 +162,7 @@ export default class AnnotationConcept {
     try {
       await this.annotations.updateOne(
         { _id: annotation },
-        { $set: { resolved: resolved } }
+        { $set: { resolved: resolved } },
       );
       return {};
     } catch (e) {
@@ -195,7 +185,9 @@ export default class AnnotationConcept {
     author: User;
     annotation: ID;
   }): Promise<Empty | { error: string }> {
-    const existingAnnotation = await this.annotations.findOne({ _id: annotation });
+    const existingAnnotation = await this.annotations.findOne({
+      _id: annotation,
+    });
     if (!existingAnnotation) {
       return { error: "Annotation not found." };
     }
@@ -250,7 +242,9 @@ export default class AnnotationConcept {
     annotation: ID;
   }): Promise<{ annotation: AnnotationDoc }[] | { error: string }> {
     try {
-      const foundAnnotation = await this.annotations.findOne({ _id: annotation });
+      const foundAnnotation = await this.annotations.findOne({
+        _id: annotation,
+      });
       return foundAnnotation ? [{ annotation: foundAnnotation }] : [];
     } catch (e) {
       console.error("Failed to retrieve annotation by ID:", e);
@@ -258,4 +252,3 @@ export default class AnnotationConcept {
     }
   }
 }
-```
