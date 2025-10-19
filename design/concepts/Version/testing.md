@@ -2,6 +2,28 @@
 
 [@testing-concepts](../../background/testing-concepts.md)
 
+[@Version](Version.md)
+
+[@VersionConcept](../../../src/concepts/Version/VersionConcept.ts)
+
+[@VersionDraftConcept](../../../src/concepts/VersionDraft/VersionDraftConcept.ts)
+
+[@VersionDraftConcept.test](../../../src/concepts/VersionDraft/VersionDraftConcept.test.ts)
+
+[@RecipeConcept](../../../src/concepts/Recipe/RecipeConcept.ts)
+
+[@RecipeConcept.test](../../../src/concepts/Recipe/RecipeConcept.test.ts)
+
+[@UserConcept](../../../src/concepts/User/UserConcept.ts)
+
+[@database](../../../src/utils/database.ts)
+
+[@types](../../../src/utils/types.ts)
+
+[@deno.json](../../../deno.json)
+
+[@concept_server](../../../src/concept_server.ts)
+
 # test: Version
 
 
@@ -9,586 +31,1278 @@
 
 ```typescript
 // file: src/concepts/Version/VersionConcept.test.ts
-import { assertEquals, assertObjectMatch } from "jsr:@std/assert";
-import { testDb, freshID } from "@utils/database.ts";
-import type { ID } from "@utils/types.ts";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertNotEquals,
+  assertObjectMatch,
+} from "jsr:@std/assert";
+import { freshID, testDb } from "@utils/database.ts";
+import type { Empty, ID } from "@utils/types.ts";
 import VersionConcept from "./VersionConcept.ts";
-import VersionDraftConcept from "../VersionDraft/VersionDraftConcept.ts"; // Needed to simulate syncs
 
-// Helper types for test data
-interface TestIngredient {
+// Helper types for Ingredient and Step for consistency with the concept's internal types
+// These are duplicated here for self-containment as per concept design rules
+interface Ingredient {
   name: string;
   quantity: string;
   unit?: string;
   notes?: string;
 }
 
-interface TestStep {
+interface Step {
   description: string;
-  duration?: number;
-  notes?: string;
+  duration?: number; // in minutes
+  notes?: string; // e.g., "stir until golden brown"
 }
 
-Deno.test("VersionConcept Lifecycle Tests", async (t) => {
+interface PromptHistoryEntry {
+  promptText: string;
+  modelName: string;
+  timestamp: Date;
+  draftId: ID;
+  status: "Approved" | "Rejected" | "Generated" | "Failed";
+}
+
+Deno.test("VersionConcept Actions and Queries", async (t) => {
   const [db, client] = await testDb();
-  const versionConcept = new VersionConcept(db);
-  const versionDraftConcept = new VersionDraftConcept(db); // For simulating syncs
+  const concept = new VersionConcept(db);
 
-  const userAlice = "user:Alice" as ID;
-  const userBob = "user:Bob" as ID;
-  const recipe1 = "recipe:Brownies" as ID;
-  const recipe2 = "recipe:Pizza" as ID;
+  const testUser1: ID = "user:Alice" as ID;
+  const testUser2: ID = "user:Bob" as ID;
+  const testRecipe1: ID = "recipe:Brownies" as ID;
+  const testRecipe2: ID = "recipe:Cookies" as ID;
 
-  const initialIngredients: TestIngredient[] = [
-    { name: "Flour", quantity: "1 cup" },
-    { name: "Sugar", quantity: "0.5 cup" },
+  // Helper for creating consistent ingredient and step data for tests
+  const createTestIngredients = () => [
+    { name: "Flour", quantity: "2 cups" },
+    { name: "Sugar", quantity: "1 cup" },
   ];
-  const initialSteps: TestStep[] = [{ description: "Mix ingredients." }];
+  const createTestSteps = () => [
+    { description: "Mix dry ingredients." },
+    { description: "Bake at 350F." },
+  ];
 
-  t.beforeAll(async () => {
-    // Clear collections before all tests in this file
-    await versionConcept.versions.deleteMany({});
-    await versionDraftConcept.drafts.deleteMany({});
-  });
-
-  t.afterAll(async () => {
+  Deno.test.afterAll(async () => {
     await client.close();
   });
 
-  await t.step("createVersion - successfully creates a new recipe version", async () => {
-    console.log("--- Test: createVersion successful ---");
-    const result = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
+  await t.step(
+    "Principle: Users can create versions manually or use AI to draft one; drafts are reviewed, edited, and either approved or rejected.",
+    async () => {
+      console.log("--- Trace: Testing the Version concept's principle ---");
+      console.log(
+        "Principle: Users can create versions manually or use AI to draft one ('make this vegan', 'cut sugar by half', etc.); drafts are reviewed, edited, and either approved or rejected.",
+      );
+
+      // --- Part 1: Manual Version Creation ---
+      console.log("\n--- Sub-trace: Manual Version Creation ---");
+      const manualVersionNum = "1.0";
+      const manualNotes = "Initial stable version.";
+      console.log(
+        `Action: createVersion(author=${testUser1}, recipe=${testRecipe1}, versionNum="${manualVersionNum}", ...)`,
+      );
+      const manualCreateResult = await concept.createVersion({
+        author: testUser1,
+        recipe: testRecipe1,
+        versionNum: manualVersionNum,
+        notes: manualNotes,
+        ingredients: createTestIngredients(),
+        steps: createTestSteps(),
+      });
+      assertExists(
+        (manualCreateResult as { version: ID }).version,
+        "Requires: Valid inputs. Effects: Returns new version ID.",
+      );
+      const manualVersionId = (manualCreateResult as { version: ID }).version;
+      console.log(`Effect confirmed: Manual Version ${manualVersionId} created.`);
+
+      // Verify the manually created version
+      const retrievedManualVersion = await concept._getVersionById({
+        version: manualVersionId,
+      });
+      assert(
+        Array.isArray(retrievedManualVersion),
+        "Query should return an array",
+      );
+      assertEquals(retrievedManualVersion.length, 1, "Should find manual version");
+      assertEquals(
+        retrievedManualVersion[0].versionNum,
+        manualVersionNum,
+        "Manual version number matches.",
+      );
+      assertEquals(
+        retrievedManualVersion[0].promptHistory.length,
+        0,
+        "Manual version should have empty prompt history.",
+      );
+      console.log(
+        "Verification: Manual version created successfully without AI history.",
+      );
+
+      // --- Part 2: AI-Assisted Version Workflow (Draft, Approve) ---
+      console.log("\n--- Sub-trace: AI-Assisted Version Workflow (Approve) ---");
+      const aiGoal = "Cut sugar by half";
+      const draftVersionNum = "1.1";
+      console.log(
+        `Action: draftVersionWithAI(author=${testUser1}, recipe=${testRecipe1}, goal="${aiGoal}")`,
+      );
+      const draftResult = await concept.draftVersionWithAI({
+        author: testUser1,
+        recipe: testRecipe1,
+        goal: aiGoal,
+      });
+      assertExists(
+        (draftResult as { draftId: ID }).draftId,
+        "Requires: Valid inputs. Effects: Outputs draft details.",
+      );
+      if ("error" in draftResult) {
+        throw new Error(`Failed to draft with AI: ${draftResult.error}`);
+      }
+      const draftId = draftResult.draftId;
+      console.log(`Effect confirmed: AI Draft ${draftId} generated.`);
+      console.log(
+        `Trace: User reviews AI Draft ${draftId}, decides to approve.`,
+      );
+
+      const approvedNotes = "Sugar reduced by 50% via AI suggestion.";
+      const updatedIngredients = createTestIngredients().map((ing) =>
+        ing.name === "Sugar" ? { ...ing, quantity: "0.5 cup" } : ing
+      );
+      console.log(
+        `Action: approveDraft(author=${testUser1}, draftId=${draftId}, recipe=${testRecipe1}, newVersionNum="${draftVersionNum}", ...)`,
+      );
+      const approveResult = await concept.approveDraft({
+        author: testUser1,
+        draftId: draftId,
+        baseRecipe: testRecipe1,
+        newVersionNum: draftVersionNum,
+        draftDetails: {
+          ingredients: updatedIngredients,
+          steps: createTestSteps(), // Assuming steps didn't change for this goal
+          notes: approvedNotes,
+          goal: aiGoal,
+          confidence: 0.95,
+        },
+      });
+      assertExists(
+        (approveResult as { newVersionId: ID }).newVersionId,
+        "Requires: Valid draft, unique versionNum. Effects: Outputs new version and draft deletion data.",
+      );
+      if ("error" in approveResult) {
+        throw new Error(`Failed to approve draft: ${approveResult.error}`);
+      }
+      const approvedVersionId = approveResult.newVersionId;
+      console.log(
+        `Effect confirmed: Approved AI Draft converted to Version ${approvedVersionId}.`,
+      );
+      // In a real system, syncs would now call `createVersion` and `deleteDraft` for VersionDraft.
+      // We simulate `createVersion` here using the output from `approveDraft`.
+      const finalApprovedVersion = await concept.createVersion({
+        author: approveResult.author,
+        recipe: approveResult.recipe,
+        versionNum: approveResult.versionNum,
+        notes: approveResult.notes,
+        ingredients: approveResult.ingredients,
+        steps: approveResult.steps,
+        promptHistory: [approveResult.promptHistoryEntry], // This is key for history tracking
+      });
+      assertExists(
+        (finalApprovedVersion as { version: ID }).version,
+        "Simulated createVersion after approve should succeed.",
+      );
+      assertEquals(
+        (finalApprovedVersion as { version: ID }).version,
+        approvedVersionId,
+        "Version ID from approve and create should match.",
+      );
+      console.log(
+        `Simulated Sync: createVersion action called with approved draft details.`,
+      );
+
+      // Verify the AI-assisted version
+      const retrievedApprovedVersion = await concept._getVersionById({
+        version: approvedVersionId,
+      });
+      assert(
+        Array.isArray(retrievedApprovedVersion),
+        "Query should return an array",
+      );
+      assertEquals(
+        retrievedApprovedVersion.length,
+        1,
+        "Should find approved version",
+      );
+      assertEquals(
+        retrievedApprovedVersion[0].versionNum,
+        draftVersionNum,
+        "Approved version number matches.",
+      );
+      assertEquals(
+        retrievedApprovedVersion[0].notes,
+        approvedNotes,
+        "Approved version notes matches.",
+      );
+      assertEquals(
+        retrievedApprovedVersion[0].ingredients[1].quantity,
+        "0.5 cup",
+        "Approved version ingredients updated.",
+      );
+      assertEquals(
+        retrievedApprovedVersion[0].promptHistory.length,
+        1,
+        "Approved version should have one prompt history entry.",
+      );
+      assertEquals(
+        retrievedApprovedVersion[0].promptHistory[0].goal,
+        aiGoal,
+        "Prompt history goal matches original AI goal.",
+      );
+      assertEquals(
+        retrievedApprovedVersion[0].promptHistory[0].status,
+        "Approved",
+        "Prompt history status is 'Approved'.",
+      );
+      console.log(
+        "Verification: AI-assisted version created with correct details and prompt history.",
+      );
+
+      // --- Part 3: AI-Assisted Version Workflow (Draft, Reject) ---
+      console.log("\n--- Sub-trace: AI-Assisted Version Workflow (Reject) ---");
+      const rejectGoal = "Make it super spicy";
+      console.log(
+        `Action: draftVersionWithAI(author=${testUser2}, recipe=${testRecipe2}, goal="${rejectGoal}")`,
+      );
+      const rejectDraftResult = await concept.draftVersionWithAI({
+        author: testUser2,
+        recipe: testRecipe2,
+        goal: rejectGoal,
+      });
+      assertExists(
+        (rejectDraftResult as { draftId: ID }).draftId,
+        "Requires: Valid inputs. Effects: Outputs draft details.",
+      );
+      if ("error" in rejectDraftResult) {
+        throw new Error(`Failed to draft with AI: ${rejectDraftResult.error}`);
+      }
+      const rejectedDraftId = rejectDraftResult.draftId;
+      console.log(
+        `Effect confirmed: AI Draft ${rejectedDraftId} generated for rejection.`,
+      );
+      console.log(
+        `Trace: User reviews AI Draft ${rejectedDraftId}, decides to reject.`,
+      );
+
+      console.log(
+        `Action: rejectDraft(author=${testUser2}, draftId=${rejectedDraftId}, recipe=${testRecipe2}, goal="${rejectGoal}")`,
+      );
+      const rejectResult = await concept.rejectDraft({
+        author: testUser2,
+        draftId: rejectedDraftId,
+        baseRecipe: testRecipe2,
+        goal: rejectGoal,
+      });
+      assertExists(
+        (rejectResult as { draftToDeleteId: ID }).draftToDeleteId,
+        "Requires: Valid draft. Effects: Outputs draft deletion and rejected history data.",
+      );
+      if ("error" in rejectResult) {
+        throw new Error(`Failed to reject draft: ${rejectResult.error}`);
+      }
+      assertEquals(
+        rejectResult.draftToDeleteId,
+        rejectedDraftId,
+        "Rejected draft ID matches.",
+      );
+      assertEquals(
+        rejectResult.promptHistoryEntry.status,
+        "Rejected",
+        "Prompt history status is 'Rejected'.",
+      );
+      console.log(
+        `Effect confirmed: Rejected AI Draft ${rejectedDraftId} marked for deletion.`,
+      );
+      console.log(
+        "Principle Fulfilled: Both manual and AI-assisted version creation flows are demonstrated, with drafts being either approved into concrete versions with history, or rejected.",
+      );
+    },
+  );
+
+  await t.step("createVersion action tests", async () => {
+    console.log("\n--- Testing createVersion action ---");
+    const testRecipe = freshID(); // Simulate a recipe ID
+    const testAuthor = freshID(); // Simulate an author ID
+
+    // Test 1: Successful creation
+    const ingredients = createTestIngredients();
+    const steps = createTestSteps();
+    const result1 = await concept.createVersion({
+      author: testAuthor,
+      recipe: testRecipe,
       versionNum: "1.0",
-      notes: "Initial recipe version.",
-      ingredients: initialIngredients,
-      steps: initialSteps,
+      notes: "Initial version.",
+      ingredients,
+      steps,
     });
+    assertExists(
+      (result1 as { version: ID }).version,
+      "Effects: Should return a version ID for valid input.",
+    );
+    if ("error" in result1) {
+      throw new Error(`Failed to create version: ${result1.error}`);
+    }
+    const newVersionId = result1.version;
+    console.log(
+      `Action: createVersion(author=${testAuthor}, recipe=${testRecipe}, versionNum="1.0") -> version ID: ${newVersionId}`,
+    );
 
-    console.log("createVersion result:", result);
-    assertEquals(typeof (result as { version: ID }).version, "string");
-    const newVersionId = (result as { version: ID }).version;
-
-    const fetched = await versionConcept._getVersionById({ version: newVersionId });
-    console.log("Fetched version after creation:", fetched);
-    assertEquals((fetched as any[]).length, 1);
-    assertObjectMatch((fetched as any[])[0], {
-      _id: newVersionId,
-      baseRecipe: recipe1,
-      versionNum: "1.0",
-      author: userAlice,
-      notes: "Initial recipe version.",
-      ingredients: initialIngredients,
-      steps: initialSteps,
-      promptHistory: [],
+    // Verify effects
+    const createdVersion = await concept._getVersionById({
+      version: newVersionId,
     });
-    console.log("--- End Test: createVersion successful ---");
-  });
+    assert(Array.isArray(createdVersion), "Query should return an array");
+    assertEquals(createdVersion.length, 1, "Should find the created version.");
+    assertEquals(
+      createdVersion[0].versionNum,
+      "1.0",
+      "Effects: Created version should have correct version number.",
+    );
+    assertEquals(
+      createdVersion[0].author,
+      testAuthor,
+      "Effects: Created version should have correct author.",
+    );
+    assertEquals(
+      createdVersion[0].baseRecipe,
+      testRecipe,
+      "Effects: Created version should link to correct base recipe.",
+    );
+    assertEquals(
+      createdVersion[0].promptHistory.length,
+      0,
+      "Effects: Manual version should have empty prompt history.",
+    );
+    console.log(
+      `Verification: _getVersionById(${newVersionId}) confirmed version details.`,
+    );
 
-  await t.step("createVersion - fails with duplicate versionNum for the same recipe", async () => {
-    console.log("--- Test: createVersion duplicate versionNum ---");
-    const result = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
+    // Test 2: Duplicate versionNum for the same recipe
+    const result2 = await concept.createVersion({
+      author: testAuthor,
+      recipe: testRecipe,
       versionNum: "1.0", // Duplicate
-      notes: "Attempting to create duplicate.",
-      ingredients: initialIngredients,
-      steps: initialSteps,
+      notes: "Another initial version attempt.",
+      ingredients,
+      steps,
     });
+    assertExists(
+      (result2 as { error: string }).error,
+      "Requires: versionNum unique. Effects: Should return error for duplicate versionNum.",
+    );
+    assertEquals(
+      (result2 as { error: string }).error,
+      `Version number '1.0' already exists for this recipe.`,
+      "Error message should indicate duplicate version number.",
+    );
+    console.log(
+      `Action: createVersion(versionNum="1.0" - duplicate) -> Error: ${
+        "error" in result2 ? result2.error : "Unknown error"
+      }`,
+    );
 
-    console.log("createVersion duplicate result:", result);
-    assertObjectMatch(result, { error: "Version number '1.0' already exists for this recipe." });
-    console.log("--- End Test: createVersion duplicate versionNum ---");
-  });
-
-  await t.step("createVersion - fails with invalid inputs", async () => {
-    console.log("--- Test: createVersion invalid inputs ---");
-    let result = await versionConcept.createVersion({
+    // Test 3: Missing author
+    const result3 = await concept.createVersion({
       author: "" as ID,
-      recipe: recipe1,
-      versionNum: "1.1",
-      notes: "Test",
-      ingredients: initialIngredients,
-      steps: initialSteps,
-    });
-    assertEquals(result, { error: "Author ID must be provided." });
-
-    result = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: "" as ID,
-      versionNum: "1.1",
-      notes: "Test",
-      ingredients: initialIngredients,
-      steps: initialSteps,
-    });
-    assertEquals(result, { error: "Base recipe ID must be provided." });
-
-    result = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
-      versionNum: "",
-      notes: "Test",
-      ingredients: initialIngredients,
-      steps: initialSteps,
-    });
-    assertEquals(result, { error: "Version number cannot be empty." });
-
-    result = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
-      versionNum: "1.1",
-      notes: "",
-      ingredients: [], // Empty ingredients
-      steps: initialSteps,
-    });
-    assertEquals(result, { error: "Version must have at least one ingredient." });
-
-    result = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
-      versionNum: "1.1",
-      notes: "Test",
-      ingredients: [{ name: "", quantity: "1" }], // Malformed ingredient
-      steps: initialSteps,
-    });
-    assertEquals(result, { error: "Each ingredient must have a name and quantity." });
-    console.log("--- End Test: createVersion invalid inputs ---");
-  });
-
-  await t.step("deleteVersion - successfully deletes a version by its author", async () => {
-    console.log("--- Test: deleteVersion successful ---");
-    const newVersionResult = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
-      versionNum: "1.1",
-      notes: "Another version for deletion.",
-      ingredients: initialIngredients,
-      steps: initialSteps,
-    });
-    const versionToDeleteId = (newVersionResult as { version: ID }).version;
-    console.log("Version created for deletion:", versionToDeleteId);
-
-    const deleteResult = await versionConcept.deleteVersion({ requester: userAlice, version: versionToDeleteId });
-    console.log("deleteVersion result:", deleteResult);
-    assertEquals(deleteResult, {});
-
-    const fetched = await versionConcept._getVersionById({ version: versionToDeleteId });
-    console.log("Fetched version after deletion:", fetched);
-    assertEquals((fetched as any[]).length, 0); // Should be deleted
-    console.log("--- End Test: deleteVersion successful ---");
-  });
-
-  await t.step("deleteVersion - fails if requester is not the author", async () => {
-    console.log("--- Test: deleteVersion non-author ---");
-    const newVersionResult = await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
+      recipe: testRecipe,
       versionNum: "1.2",
-      notes: "Version to attempt unauthorized deletion.",
-      ingredients: initialIngredients,
-      steps: initialSteps,
+      notes: "Missing author.",
+      ingredients,
+      steps,
     });
-    const versionId = (newVersionResult as { version: ID }).version;
+    assertExists(
+      (result3 as { error: string }).error,
+      "Requires: Author ID. Effects: Should return error for missing author.",
+    );
+    assertEquals(
+      (result3 as { error: string }).error,
+      "Author ID must be provided.",
+      "Error message should indicate missing author ID.",
+    );
+    console.log(
+      `Action: createVersion(author=empty) -> Error: ${
+        "error" in result3 ? result3.error : "Unknown error"
+      }`,
+    );
 
-    const deleteResult = await versionConcept.deleteVersion({ requester: userBob, version: versionId });
-    console.log("deleteVersion by non-author result:", deleteResult);
-    assertObjectMatch(deleteResult, { error: "Requester is not the author of this version." });
-
-    const fetched = await versionConcept._getVersionById({ version: versionId });
-    assertEquals((fetched as any[]).length, 1); // Should still exist
-    console.log("--- End Test: deleteVersion non-author ---");
-  });
-
-  await t.step("draftVersionWithAI - successfully generates a draft output", async () => {
-    console.log("--- Test: draftVersionWithAI successful ---");
-    const draftOutput = await versionConcept.draftVersionWithAI({
-      author: userAlice,
-      recipe: recipe1,
-      goal: "Make it gluten-free.",
-      options: {},
-    });
-
-    console.log("draftVersionWithAI output:", draftOutput);
-    assertEquals(typeof (draftOutput as { draftId: ID }).draftId, "string");
-    assertObjectMatch((draftOutput as any), {
-      baseRecipe: recipe1,
-      requester: userAlice,
-      goal: "Make it gluten-free.",
-    });
-    assertEquals((draftOutput as any).ingredients.length > 0, true);
-    assertEquals((draftOutput as any).steps.length > 0, true);
-    assertEquals((draftOutput as any).notes.includes("AI-generated draft"), true);
-    console.log("--- End Test: draftVersionWithAI successful ---");
-  });
-
-  await t.step("draftVersionWithAI - fails with invalid inputs", async () => {
-    console.log("--- Test: draftVersionWithAI invalid inputs ---");
-    let result = await versionConcept.draftVersionWithAI({
-      author: "" as ID,
-      recipe: recipe1,
-      goal: "Test goal",
-    });
-    assertEquals(result, { error: "Author ID must be provided." });
-
-    result = await versionConcept.draftVersionWithAI({
-      author: userAlice,
+    // Test 4: Missing recipe
+    const result4 = await concept.createVersion({
+      author: testAuthor,
       recipe: "" as ID,
-      goal: "Test goal",
+      versionNum: "1.2",
+      notes: "Missing recipe.",
+      ingredients,
+      steps,
     });
-    assertEquals(result, { error: "Base recipe ID must be provided." });
+    assertExists(
+      (result4 as { error: string }).error,
+      "Requires: Recipe ID. Effects: Should return error for missing recipe.",
+    );
+    assertEquals(
+      (result4 as { error: string }).error,
+      "Base recipe ID must be provided.",
+      "Error message should indicate missing base recipe ID.",
+    );
+    console.log(
+      `Action: createVersion(recipe=empty) -> Error: ${
+        "error" in result4 ? result4.error : "Unknown error"
+      }`,
+    );
 
-    result = await versionConcept.draftVersionWithAI({
-      author: userAlice,
+    // Test 5: Empty versionNum
+    const result5 = await concept.createVersion({
+      author: testAuthor,
+      recipe: testRecipe,
+      versionNum: "",
+      notes: "Empty versionNum.",
+      ingredients,
+      steps,
+    });
+    assertExists(
+      (result5 as { error: string }).error,
+      "Requires: versionNum not empty. Effects: Should return error for empty versionNum.",
+    );
+    assertEquals(
+      (result5 as { error: string }).error,
+      "Version number cannot be empty.",
+      "Error message should indicate empty version number.",
+    );
+    console.log(
+      `Action: createVersion(versionNum=empty) -> Error: ${
+        "error" in result5 ? result5.error : "Unknown error"
+      }`,
+    );
+
+    // Test 6: Empty ingredients list
+    const result6 = await concept.createVersion({
+      author: testAuthor,
+      recipe: testRecipe,
+      versionNum: "1.3",
+      notes: "No ingredients.",
+      ingredients: [],
+      steps,
+    });
+    assertExists(
+      (result6 as { error: string }).error,
+      "Requires: ingredients well-formed. Effects: Should return error.",
+    );
+    assertEquals(
+      (result6 as { error: string }).error,
+      "Version must have at least one ingredient.",
+      "Error message should indicate empty ingredients list.",
+    );
+    console.log(
+      `Action: createVersion(ingredients=[]) -> Error: ${
+        "error" in result6 ? result6.error : "Unknown error"
+      }`,
+    );
+
+    // Test 7: Malformed ingredient (missing name)
+    const malformedIngredients = [
+      { name: "", quantity: "1 unit" },
+    ] as Ingredient[];
+    const result7 = await concept.createVersion({
+      author: testAuthor,
+      recipe: testRecipe,
+      versionNum: "1.4",
+      notes: "Malformed ingredient.",
+      ingredients: malformedIngredients,
+      steps,
+    });
+    assertExists(
+      (result7 as { error: string }).error,
+      "Requires: ingredients well-formed. Effects: Should return error.",
+    );
+    assertEquals(
+      (result7 as { error: string }).error,
+      "Each ingredient must have a name and quantity.",
+      "Error message should indicate malformed ingredient.",
+    );
+    console.log(
+      `Action: createVersion(malformed ingredient) -> Error: ${
+        "error" in result7 ? result7.error : "Unknown error"
+      }`,
+    );
+  });
+
+  await t.step("deleteVersion action tests", async () => {
+    console.log("\n--- Testing deleteVersion action ---");
+    const owner1: ID = freshID();
+    const recipe1 = freshID();
+    const ingredients = createTestIngredients();
+    const steps = createTestSteps();
+
+    // Setup: Create a version to delete
+    const createResult = await concept.createVersion({
+      author: owner1,
       recipe: recipe1,
+      versionNum: "1.0",
+      notes: "Test version for deletion.",
+      ingredients,
+      steps,
+    });
+    if ("error" in createResult) {
+      throw new Error(`Failed to create setup version: ${createResult.error}`);
+    }
+    const versionIdToDelete = (createResult as { version: ID }).version;
+    console.log(
+      `Setup: Created version ${versionIdToDelete} by ${owner1} for recipe ${recipe1}.`,
+    );
+
+    // Test 1: Successful deletion by author
+    const deleteResult1 = await concept.deleteVersion({
+      requester: owner1,
+      version: versionIdToDelete,
+    });
+    assertEquals(
+      deleteResult1,
+      {},
+      "Effects: Should return empty object on successful deletion.",
+    );
+    console.log(
+      `Action: deleteVersion(requester=${owner1}, version=${versionIdToDelete}) -> Success`,
+    );
+
+    // Verify effects
+    const deletedVersion = await concept._getVersionById({
+      version: versionIdToDelete,
+    });
+    assert(Array.isArray(deletedVersion), "Query should return an array");
+    assertEquals(
+      deletedVersion.length,
+      0,
+      "Effects: Deleted version should no longer be found.",
+    );
+    console.log(
+      `Verification: _getVersionById(${versionIdToDelete}) confirmed version is gone.`,
+    );
+
+    // Setup: Create another version by a different author for non-author deletion test
+    const owner2: ID = freshID();
+    const recipe2 = freshID();
+    const createResult2 = await concept.createVersion({
+      author: owner2,
+      recipe: recipe2,
+      versionNum: "1.0",
+      notes: "Another test version.",
+      ingredients,
+      steps,
+    });
+    if ("error" in createResult2) {
+      throw new Error(
+        `Failed to create setup version 2: ${createResult2.error}`,
+      );
+    }
+    const versionIdToAttemptDelete = (createResult2 as { version: ID }).version;
+    console.log(
+      `Setup: Created version ${versionIdToAttemptDelete} by ${owner2} for recipe ${recipe2}.`,
+    );
+
+    // Test 2: Attempt to delete by non-author
+    const nonAuthor: ID = freshID(); // Not owner1 or owner2
+    const deleteResult2 = await concept.deleteVersion({
+      requester: nonAuthor,
+      version: versionIdToAttemptDelete,
+    });
+    assertExists(
+      (deleteResult2 as { error: string }).error,
+      "Requires: requester is author. Effects: Should return error for non-author deletion.",
+    );
+    assertEquals(
+      (deleteResult2 as { error: string }).error,
+      "Requester is not the author of this version.",
+      "Error message should indicate non-author.",
+    );
+    console.log(
+      `Action: deleteVersion(requester=${nonAuthor}, version=${versionIdToAttemptDelete}) -> Error: ${
+        "error" in deleteResult2 ? deleteResult2.error : "Unknown error"
+      }`,
+    );
+
+    // Verify version still exists after failed attempt
+    const existingVersion = await concept._getVersionById({
+      version: versionIdToAttemptDelete,
+    });
+    assert(Array.isArray(existingVersion), "Query should return an array");
+    assertEquals(
+      existingVersion.length,
+      1,
+      "Effects: Version should still exist after failed deletion.",
+    );
+    console.log(
+      `Verification: _getVersionById(${versionIdToAttemptDelete}) confirmed version still exists.`,
+    );
+
+    // Test 3: Delete non-existent version
+    const nonExistentVersionId = freshID();
+    const deleteResult3 = await concept.deleteVersion({
+      requester: owner1,
+      version: nonExistentVersionId,
+    });
+    assertExists(
+      (deleteResult3 as { error: string }).error,
+      "Requires: Version exists. Effects: Should return error for non-existent version.",
+    );
+    assertEquals(
+      (deleteResult3 as { error: string }).error,
+      `Version with ID ${nonExistentVersionId} not found.`,
+      "Error message should indicate version not found.",
+    );
+    console.log(
+      `Action: deleteVersion(version=nonExistent) -> Error: ${
+        "error" in deleteResult3 ? deleteResult3.error : "Unknown error"
+      }`,
+    );
+
+    // Test 4: Missing requester ID
+    const deleteResult4 = await concept.deleteVersion({
+      requester: "" as ID,
+      version: versionIdToAttemptDelete,
+    });
+    assertExists(
+      (deleteResult4 as { error: string }).error,
+      "Requires: requester ID. Effects: Should return error for missing requester ID.",
+    );
+    assertEquals(
+      (deleteResult4 as { error: string }).error,
+      "Requester ID must be provided.",
+      "Error message should indicate missing requester ID.",
+    );
+    console.log(
+      `Action: deleteVersion(requester=empty) -> Error: ${
+        "error" in deleteResult4 ? deleteResult4.error : "Unknown error"
+      }`,
+    );
+  });
+
+  await t.step("draftVersionWithAI action tests", async () => {
+    console.log("\n--- Testing draftVersionWithAI action ---");
+    const testAuthor = freshID();
+    const testRecipe = freshID();
+    const goal = "Make it gluten-free and add a banana.";
+
+    // Test 1: Successful draft generation
+    const draftResult1 = await concept.draftVersionWithAI({
+      author: testAuthor,
+      recipe: testRecipe,
+      goal: goal,
+    });
+    assertExists(
+      (draftResult1 as { draftId: ID }).draftId,
+      "Effects: Should return a draft ID.",
+    );
+    if ("error" in draftResult1) {
+      throw new Error(`Failed to draft with AI: ${draftResult1.error}`);
+    }
+    assertEquals(
+      draftResult1.requester,
+      testAuthor,
+      "Effects: Requester should match author.",
+    );
+    assertEquals(
+      draftResult1.baseRecipe,
+      testRecipe,
+      "Effects: Base recipe should match.",
+    );
+    assert(
+      draftResult1.notes.includes(goal),
+      "Effects: Notes should reflect the goal.",
+    );
+    assert(
+      draftResult1.ingredients.some((i) => i.name === "Plant-based milk"),
+      "Effects: Simulated vegan change for 'gluten-free' (as per internal mock logic).",
+    );
+    assert(
+      draftResult1.expires.getTime() > draftResult1.created.getTime(),
+      "Effects: Expires date should be set after created date.",
+    );
+    console.log(
+      `Action: draftVersionWithAI(goal="${goal}") -> Draft ID: ${draftResult1.draftId}, Notes: ${draftResult1.notes}`,
+    );
+
+    // Test 2: Missing author
+    const draftResult2 = await concept.draftVersionWithAI({
+      author: "" as ID,
+      recipe: testRecipe,
+      goal: "Some goal",
+    });
+    assertExists(
+      (draftResult2 as { error: string }).error,
+      "Requires: Author ID. Effects: Should return error.",
+    );
+    assertEquals(
+      (draftResult2 as { error: string }).error,
+      "Author ID must be provided.",
+      "Error message should indicate missing author.",
+    );
+    console.log(
+      `Action: draftVersionWithAI(author=empty) -> Error: ${
+        "error" in draftResult2 ? draftResult2.error : "Unknown error"
+      }`,
+    );
+
+    // Test 3: Missing recipe
+    const draftResult3 = await concept.draftVersionWithAI({
+      author: testAuthor,
+      recipe: "" as ID,
+      goal: "Some goal",
+    });
+    assertExists(
+      (draftResult3 as { error: string }).error,
+      "Requires: Recipe ID. Effects: Should return error.",
+    );
+    assertEquals(
+      (draftResult3 as { error: string }).error,
+      "Base recipe ID must be provided.",
+      "Error message should indicate missing recipe.",
+    );
+    console.log(
+      `Action: draftVersionWithAI(recipe=empty) -> Error: ${
+        "error" in draftResult3 ? draftResult3.error : "Unknown error"
+      }`,
+    );
+
+    // Test 4: Empty goal
+    const draftResult4 = await concept.draftVersionWithAI({
+      author: testAuthor,
+      recipe: testRecipe,
       goal: "",
     });
-    assertEquals(result, { error: "Goal cannot be empty." });
-    console.log("--- End Test: draftVersionWithAI invalid inputs ---");
+    assertExists(
+      (draftResult4 as { error: string }).error,
+      "Requires: Goal not empty. Effects: Should return error.",
+    );
+    assertEquals(
+      (draftResult4 as { error: string }).error,
+      "Goal cannot be empty.",
+      "Error message should indicate empty goal.",
+    );
+    console.log(
+      `Action: draftVersionWithAI(goal=empty) -> Error: ${
+        "error" in draftResult4 ? draftResult4.error : "Unknown error"
+      }`,
+    );
   });
 
-  await t.step("approveDraft - successfully promotes a draft to a version (simulated sync)", async () => {
-    console.log("--- Test: approveDraft successful (simulated sync) ---");
-    // 1. Simulate AI drafting and creation of VersionDraft
-    const draftOutput = await versionConcept.draftVersionWithAI({
-      author: userAlice,
-      recipe: recipe1,
-      goal: "Add more chocolate.",
-    });
-    const draftDetails = draftOutput as any;
-    const createdDraftResult = await versionDraftConcept.createDraft({
-      id: draftDetails.draftId, // Use ID from AI output
-      requester: draftDetails.requester,
-      baseRecipe: draftDetails.baseRecipe,
-      goal: draftDetails.goal,
-      ingredients: draftDetails.ingredients,
-      steps: draftDetails.steps,
-      notes: draftDetails.notes,
-      confidence: draftDetails.confidence,
-    });
-    assertEquals(typeof (createdDraftResult as { id: ID }).id, "string");
-    const createdDraftId = (createdDraftResult as { id: ID }).id;
-    console.log("VersionDraft created:", createdDraftId);
+  await t.step("approveDraft action tests", async () => {
+    console.log("\n--- Testing approveDraft action ---");
+    const testAuthor = freshID();
+    const testRecipe = freshID();
+    const testDraftId = freshID();
+    const newVersionNum = "2.0";
+    const draftGoal = "Make it low-fat.";
+    const draftNotes = "AI suggested low-fat substitutions.";
+    const draftIngredients: Ingredient[] = [
+      { name: "Skim Milk", quantity: "1 cup" },
+    ];
+    const draftSteps = [{ description: "Use skim milk." }];
 
-    let fetchedDrafts = await versionDraftConcept._getDraftById({ id: createdDraftId });
-    assertEquals(fetchedDrafts.length, 1);
-
-    // 2. User approves the draft (VersionConcept.approveDraft returns output for sync)
-    const approveOutput = await versionConcept.approveDraft({
-      author: userAlice,
-      draftId: createdDraftId,
-      baseRecipe: recipe1,
-      newVersionNum: "2.0",
+    // Test 1: Successful approval output
+    const approveResult1 = await concept.approveDraft({
+      author: testAuthor,
+      draftId: testDraftId,
+      baseRecipe: testRecipe,
+      newVersionNum: newVersionNum,
       draftDetails: {
-        ingredients: draftDetails.ingredients,
-        steps: draftDetails.steps,
-        notes: draftDetails.notes,
-        goal: draftDetails.goal,
-        confidence: draftDetails.confidence,
+        ingredients: draftIngredients,
+        steps: draftSteps,
+        notes: draftNotes,
+        goal: draftGoal,
+        confidence: 0.8,
       },
     });
-    console.log("approveDraft output:", approveOutput);
-    assertEquals(typeof (approveOutput as { newVersionId: ID }).newVersionId, "string");
-    assertEquals((approveOutput as { draftToDeleteId: ID }).draftToDeleteId, createdDraftId);
+    assertExists(
+      (approveResult1 as { newVersionId: ID }).newVersionId,
+      "Effects: Should return a new version ID and other details.",
+    );
+    if ("error" in approveResult1) {
+      throw new Error(`Failed to approve draft: ${approveResult1.error}`);
+    }
     assertEquals(
-      (approveOutput as any).promptHistoryEntry.status,
+      approveResult1.author,
+      testAuthor,
+      "Effects: Author should match.",
+    );
+    assertEquals(
+      approveResult1.recipe,
+      testRecipe,
+      "Effects: Recipe should match.",
+    );
+    assertEquals(
+      approveResult1.versionNum,
+      newVersionNum,
+      "Effects: New version number should match.",
+    );
+    assertEquals(
+      approveResult1.notes,
+      draftNotes,
+      "Effects: Notes should be from draft details.",
+    );
+    assertEquals(
+      approveResult1.promptHistoryEntry.status,
       "Approved",
+      "Effects: Prompt history status should be 'Approved'.",
     );
-
-    // 3. Simulate sync: create new Version and delete VersionDraft
-    const newVersionId = (approveOutput as { newVersionId: ID }).newVersionId;
-    const createVersionSyncResult = await versionConcept.createVersion({
-      author: (approveOutput as any).author,
-      recipe: (approveOutput as any).recipe,
-      versionNum: (approveOutput as any).versionNum,
-      notes: (approveOutput as any).notes,
-      ingredients: (approveOutput as any).ingredients,
-      steps: (approveOutput as any).steps,
-      promptHistory: [(approveOutput as any).promptHistoryEntry], // Add the history entry
-    });
-    assertEquals(createVersionSyncResult, { version: newVersionId });
-    console.log("New Version created via sync:", newVersionId);
-
-    const deleteDraftSyncResult = await versionDraftConcept.deleteDraft({ id: createdDraftId });
-    assertEquals(deleteDraftSyncResult, {});
-    console.log("VersionDraft deleted via sync:", createdDraftId);
-
-    // Verify state
-    const fetchedVersion = await versionConcept._getVersionById({ version: newVersionId });
-    console.log("Fetched new version:", fetchedVersion);
-    assertEquals(fetchedVersion.length, 1);
-    assertObjectMatch(fetchedVersion[0] as any, {
-      _id: newVersionId,
-      baseRecipe: recipe1,
-      versionNum: "2.0",
-      author: userAlice,
-      notes: draftDetails.notes,
-      promptHistory: [
-        {
-          draftId: createdDraftId,
-          status: "Approved",
-          promptText: draftDetails.goal,
-        },
-      ],
-    });
-
-    fetchedDrafts = await versionDraftConcept._getDraftById({ id: createdDraftId });
-    assertEquals(fetchedDrafts.length, 0); // Draft should be gone
-    console.log("--- End Test: approveDraft successful (simulated sync) ---");
-  });
-
-  await t.step("rejectDraft - successfully rejects a draft (simulated sync)", async () => {
-    console.log("--- Test: rejectDraft successful (simulated sync) ---");
-    // 1. Simulate AI drafting and creation of VersionDraft
-    const draftOutput = await versionConcept.draftVersionWithAI({
-      author: userAlice,
-      recipe: recipe1,
-      goal: "Make it spicier.",
-    });
-    const draftDetails = draftOutput as any;
-    const createdDraftResult = await versionDraftConcept.createDraft({
-      id: draftDetails.draftId,
-      requester: draftDetails.requester,
-      baseRecipe: draftDetails.baseRecipe,
-      goal: draftDetails.goal,
-      ingredients: draftDetails.ingredients,
-      steps: draftDetails.steps,
-      notes: draftDetails.notes,
-      confidence: draftDetails.confidence,
-    });
-    const createdDraftId = (createdDraftResult as { id: ID }).id;
-    console.log("VersionDraft created for rejection:", createdDraftId);
-
-    let fetchedDrafts = await versionDraftConcept._getDraftById({ id: createdDraftId });
-    assertEquals(fetchedDrafts.length, 1);
-
-    // 2. User rejects the draft (VersionConcept.rejectDraft returns output for sync)
-    const rejectOutput = await versionConcept.rejectDraft({
-      author: userAlice,
-      draftId: createdDraftId,
-      baseRecipe: recipe1,
-      goal: "Make it spicier.",
-    });
-    console.log("rejectDraft output:", rejectOutput);
-    assertEquals((rejectOutput as { draftToDeleteId: ID }).draftToDeleteId, createdDraftId);
-    assertEquals((rejectOutput as any).promptHistoryEntry.status, "Rejected");
-
-    // 3. Simulate sync: delete VersionDraft
-    const deleteDraftSyncResult = await versionDraftConcept.deleteDraft({ id: createdDraftId });
-    assertEquals(deleteDraftSyncResult, {});
-    console.log("VersionDraft deleted via sync (rejected):", createdDraftId);
-
-    // Verify state
-    fetchedDrafts = await versionDraftConcept._getDraftById({ id: createdDraftId });
-    assertEquals(fetchedDrafts.length, 0); // Draft should be gone
-    const allVersions = await versionConcept._listVersionsByRecipe({ recipe: recipe1 });
     assertEquals(
-      (allVersions as any[]).some((v: any) => v.versionNum === "2.1"),
-      false,
-    ); // No new version created
-    console.log("--- End Test: rejectDraft successful (simulated sync) ---");
+      approveResult1.draftToDeleteId,
+      testDraftId,
+      "Effects: Draft ID to delete should match.",
+    );
+    console.log(
+      `Action: approveDraft(...) -> New Version ID: ${approveResult1.newVersionId}, Draft to delete: ${approveResult1.draftToDeleteId}`,
+    );
+
+    // Test 2: newVersionNum already exists for this recipe
+    // First, create the version that will make the number duplicate
+    await concept.createVersion({
+      author: testAuthor,
+      recipe: testRecipe,
+      versionNum: "2.1",
+      notes: "Existing version.",
+      ingredients: createTestIngredients(),
+      steps: createTestSteps(),
+    });
+    console.log(`Setup: Created version 2.1 for recipe ${testRecipe}.`);
+
+    const approveResult2 = await concept.approveDraft({
+      author: testAuthor,
+      draftId: freshID(),
+      baseRecipe: testRecipe,
+      newVersionNum: "2.1", // Duplicate
+      draftDetails: {
+        ingredients: draftIngredients,
+        steps: draftSteps,
+        notes: draftNotes,
+        goal: draftGoal,
+      },
+    });
+    assertExists(
+      (approveResult2 as { error: string }).error,
+      "Requires: newVersionNum unique. Effects: Should return error.",
+    );
+    assertEquals(
+      (approveResult2 as { error: string }).error,
+      `Version number '2.1' already exists for this recipe.`,
+      "Error message should indicate duplicate version number.",
+    );
+    console.log(
+      `Action: approveDraft(newVersionNum="2.1" - duplicate) -> Error: ${
+        "error" in approveResult2 ? approveResult2.error : "Unknown error"
+      }`,
+    );
+
+    // Test 3: Missing author
+    const approveResult3 = await concept.approveDraft({
+      author: "" as ID,
+      draftId: testDraftId,
+      baseRecipe: testRecipe,
+      newVersionNum: "2.2",
+      draftDetails: {
+        ingredients: draftIngredients,
+        steps: draftSteps,
+        notes: draftNotes,
+        goal: draftGoal,
+      },
+    });
+    assertExists(
+      (approveResult3 as { error: string }).error,
+      "Requires: Author ID. Effects: Should return error.",
+    );
+    assertEquals(
+      (approveResult3 as { error: string }).error,
+      "Author ID must be provided.",
+      "Error message should indicate missing author.",
+    );
+    console.log(
+      `Action: approveDraft(author=empty) -> Error: ${
+        "error" in approveResult3 ? approveResult3.error : "Unknown error"
+      }`,
+    );
+
+    // Test 4: Incomplete draft details
+    const approveResult4 = await concept.approveDraft({
+      author: testAuthor,
+      draftId: testDraftId,
+      baseRecipe: testRecipe,
+      newVersionNum: "2.3",
+      draftDetails: {
+        ingredients: [], // Empty ingredients
+        steps: draftSteps,
+        notes: draftNotes,
+        goal: draftGoal,
+      },
+    });
+    assertExists(
+      (approveResult4 as { error: string }).error,
+      "Requires: draftDetails complete. Effects: Should return error.",
+    );
+    assertEquals(
+      (approveResult4 as { error: string }).error,
+      "Incomplete draft details provided.",
+      "Error message should indicate incomplete draft details.",
+    );
+    console.log(
+      `Action: approveDraft(incomplete draftDetails) -> Error: ${
+        "error" in approveResult4 ? approveResult4.error : "Unknown error"
+      }`,
+    );
   });
 
-  await t.step("Queries - retrieve versions by ID, recipe, and author", async () => {
-    console.log("--- Test: Queries ---");
-    // Setup more versions for querying
-    const v1_0 = (await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe2,
-      versionNum: "1.0",
-      notes: "First version of pizza.",
-      ingredients: [{ name: "Dough", quantity: "1" }],
-      steps: [{ description: "Bake dough." }],
-    })) as { version: ID };
+  await t.step("rejectDraft action tests", async () => {
+    console.log("\n--- Testing rejectDraft action ---");
+    const testAuthor = freshID();
+    const testRecipe = freshID();
+    const testDraftId = freshID();
+    const goal = "Make it extra-salty.";
 
-    const v1_1 = (await versionConcept.createVersion({
-      author: userBob,
-      recipe: recipe2,
+    // Test 1: Successful rejection output
+    const rejectResult1 = await concept.rejectDraft({
+      author: testAuthor,
+      draftId: testDraftId,
+      baseRecipe: testRecipe,
+      goal: goal,
+    });
+    assertExists(
+      (rejectResult1 as { draftToDeleteId: ID }).draftToDeleteId,
+      "Effects: Should return draft ID to delete and prompt history entry.",
+    );
+    if ("error" in rejectResult1) {
+      throw new Error(`Failed to reject draft: ${rejectResult1.error}`);
+    }
+    assertEquals(
+      rejectResult1.draftToDeleteId,
+      testDraftId,
+      "Effects: Draft ID to delete should match.",
+    );
+    assertEquals(
+      rejectResult1.promptHistoryEntry.status,
+      "Rejected",
+      "Effects: Prompt history status should be 'Rejected'.",
+    );
+    assertEquals(
+      rejectResult1.promptHistoryEntry.promptText,
+      goal,
+      "Effects: Prompt history text should match goal.",
+    );
+    console.log(
+      `Action: rejectDraft(...) -> Draft to delete: ${rejectResult1.draftToDeleteId}, Status: ${rejectResult1.promptHistoryEntry.status}`,
+    );
+
+    // Test 2: Missing author
+    const rejectResult2 = await concept.rejectDraft({
+      author: "" as ID,
+      draftId: testDraftId,
+      baseRecipe: testRecipe,
+      goal: goal,
+    });
+    assertExists(
+      (rejectResult2 as { error: string }).error,
+      "Requires: Author ID. Effects: Should return error.",
+    );
+    assertEquals(
+      (rejectResult2 as { error: string }).error,
+      "Author ID must be provided.",
+      "Error message should indicate missing author.",
+    );
+    console.log(
+      `Action: rejectDraft(author=empty) -> Error: ${
+        "error" in rejectResult2 ? rejectResult2.error : "Unknown error"
+      }`,
+    );
+
+    // Test 3: Missing goal (empty string)
+    const rejectResult3 = await concept.rejectDraft({
+      author: testAuthor,
+      draftId: testDraftId,
+      baseRecipe: testRecipe,
+      goal: "",
+    });
+    assertExists(
+      (rejectResult3 as { error: string }).error,
+      "Requires: Goal not empty. Effects: Should return error.",
+    );
+    assertEquals(
+      (rejectResult3 as { error: string }).error,
+      "Goal must be provided for logging.",
+      "Error message should indicate missing goal.",
+    );
+    console.log(
+      `Action: rejectDraft(goal=empty) -> Error: ${
+        "error" in rejectResult3 ? rejectResult3.error : "Unknown error"
+      }`,
+    );
+  });
+
+  await t.step("Query methods tests", async () => {
+    console.log("\n--- Testing Query Methods ---");
+
+    // Clear existing versions to ensure clean test state
+    await db.collection("Version.versions").deleteMany({});
+
+    const author1: ID = freshID();
+    const author2: ID = freshID();
+    const recipeA: ID = freshID();
+    const recipeB: ID = freshID();
+
+    // Setup: Create some versions
+    const createV1 = await concept.createVersion({
+      author: author1,
+      recipe: recipeA,
+      versionNum: "1.0",
+      notes: "First version of recipe A.",
+      ingredients: createTestIngredients(),
+      steps: createTestSteps(),
+    });
+    if ("error" in createV1) throw new Error(createV1.error);
+    const version1Id = createV1.version;
+
+    const createV2 = await concept.createVersion({
+      author: author1,
+      recipe: recipeA,
       versionNum: "1.1",
-      notes: "Added toppings.",
-      ingredients: [{ name: "Dough", quantity: "1" }, { name: "Cheese", quantity: "1 cup" }],
-      steps: [{ description: "Add toppings." }],
-    })) as { version: ID };
+      notes: "Second version of recipe A (by same author).",
+      ingredients: [
+        { name: "Flour", quantity: "2 cups" },
+        { name: "Sugar", quantity: "0.5 cup" },
+      ],
+      steps: createTestSteps(),
+      promptHistory: [{
+        promptText: "Cut sugar by half",
+        modelName: "AI",
+        timestamp: new Date(),
+        draftId: freshID(),
+        status: "Approved",
+      }],
+    });
+    if ("error" in createV2) throw new Error(createV2.error);
+    const version2Id = createV2.version;
 
-    const v3_0 = (await versionConcept.createVersion({
-      author: userAlice,
-      recipe: recipe1,
-      versionNum: "3.0",
-      notes: "Newest brownies version.",
-      ingredients: initialIngredients,
-      steps: initialSteps,
-    })) as { version: ID };
-
-    // _getVersionById
-    let fetched = await versionConcept._getVersionById({ version: v1_0.version });
-    assertEquals(fetched.length, 1);
-    assertEquals((fetched as any[])[0].versionNum, "1.0");
-
-    fetched = await versionConcept._getVersionById({ version: freshID() }); // Non-existent ID
-    assertEquals(fetched.length, 0);
-
-    // _listVersionsByRecipe
-    let versionsForRecipe2 = await versionConcept._listVersionsByRecipe({ recipe: recipe2 });
-    assertEquals(versionsForRecipe2.length, 2);
-    // Should be ordered by created date, so "1.0" then "1.1"
-    assertEquals((versionsForRecipe2 as any[])[0].versionNum, "1.0");
-    assertEquals((versionsForRecipe2 as any[])[1].versionNum, "1.1");
-
-    let versionsForRecipe1 = await versionConcept._listVersionsByRecipe({ recipe: recipe1 });
-    assertEquals(versionsForRecipe1.length, 2); // Includes 1.0, 1.2 (deleted) + 2.0 (approved draft) + 3.0
-    // The previous tests created versions 1.0, 1.2 (deleted), 2.0 (approved). So current recipe1 versions: 1.0, 2.0, 3.0.
-    // Need to adjust for existing versions from previous tests.
-    // Let's assume a clean slate for list queries where needed, or account for prior tests.
-    // For this list query, we have 1.0 (from first test), 2.0 (from approveDraft test), and 3.0 (just created).
-    // The `deleteVersion` test cleaned up 1.1, and 1.2 was left. Let's list and sort to be sure.
-    versionsForRecipe1 = (versionsForRecipe1 as any[]).sort((a: any, b: any) =>
-      a.versionNum.localeCompare(b.versionNum)
-    );
-    assertEquals(versionsForRecipe1.map((v: any) => v.versionNum), ["1.0", "2.0", "3.0"]);
-
-    let versionsForNonExistentRecipe = await versionConcept._listVersionsByRecipe({ recipe: freshID() });
-    assertEquals(versionsForNonExistentRecipe.length, 0);
-
-    // _listVersionsByAuthor
-    let versionsByAlice = await versionConcept._listVersionsByAuthor({ author: userAlice });
-    versionsByAlice = (versionsByAlice as any[]).sort((a: any, b: any) =>
-      a.versionNum.localeCompare(b.versionNum)
-    );
-    // Alice authored 1.0 (recipe1), 2.0 (recipe1), 3.0 (recipe1), 1.0 (recipe2).
-    assertEquals(versionsByAlice.length, 4);
-    assertEquals(versionsByAlice.map((v: any) => v.versionNum), ["1.0", "1.0", "2.0", "3.0"]);
-
-    let versionsByBob = await versionConcept._listVersionsByAuthor({ author: userBob });
-    assertEquals(versionsByBob.length, 1); // Only v1_1 of recipe2
-    assertEquals((versionsByBob as any[])[0].versionNum, "1.1");
-
-    let versionsByNonExistentUser = await versionConcept._listVersionsByAuthor({ author: freshID() });
-    assertEquals(versionsByNonExistentUser.length, 0);
-    console.log("--- End Test: Queries ---");
-  });
-
-  await t.step("Principle: Users can create versions manually or use AI to draft one; drafts are reviewed, edited, and either approved or rejected.", async () => {
-    console.log("--- Trace: Principle Fulfillment ---");
-    const principleRecipe = "recipe:PrincipleCake" as ID;
-    const vivien = userAlice; // Using Alice for Vivien
-
-    // 1. Create a base recipe (simulated by having its ID)
-
-    // 2. Manually create an initial version
-    console.log("Trace Step 2: Manually create initial version (1.0)");
-    const v1_0_result = await versionConcept.createVersion({
-      author: vivien,
-      recipe: principleRecipe,
+    const createV3 = await concept.createVersion({
+      author: author2,
+      recipe: recipeB,
       versionNum: "1.0",
-      notes: "First draft of the Principle Cake.",
-      ingredients: [{ name: "Sugar", quantity: "1 cup" }, { name: "Flour", quantity: "2 cups" }],
-      steps: [{ description: "Mix dry ingredients." }, { description: "Bake." }],
+      notes: "First version of recipe B (by different author).",
+      ingredients: [{ name: "Milk", quantity: "1 cup" }],
+      steps: [{ description: "Heat milk." }],
     });
-    assertEquals(typeof (v1_0_result as { version: ID }).version, "string");
-    const v1_0_id = (v1_0_result as { version: ID }).version;
-    let versions = await versionConcept._listVersionsByRecipe({ recipe: principleRecipe });
-    console.log("Versions after manual 1.0:", versions.map((v) => v.versionNum));
-    assertEquals(versions.length, 1);
-    assertEquals(versions[0].versionNum, "1.0");
+    if ("error" in createV3) throw new Error(createV3.error);
+    const version3Id = createV3.version;
 
-    // 3. Draft a new version using AI ("Cut sugar by 20%")
-    console.log("Trace Step 3: Draft new version with AI - 'Cut sugar by 20%'");
-    const aiGoal1 = "Cut sugar by 20%.";
-    const draftOutput1 = await versionConcept.draftVersionWithAI({
-      author: vivien,
-      recipe: principleRecipe,
-      goal: aiGoal1,
+    console.log(
+      `Setup: Created versions: ${version1Id} (R_A, A_1), ${version2Id} (R_A, A_1), ${version3Id} (R_B, A_2).`,
+    );
+
+    // Test 1: _getVersionById - existing version
+    const getResult1 = await concept._getVersionById({ version: version1Id });
+    assert(Array.isArray(getResult1), "Query should return an array");
+    assertEquals(getResult1.length, 1, "Effects: Should return one version.");
+    assertEquals(
+      getResult1[0]._id,
+      version1Id,
+      "Effects: Should return the correct version.",
+    );
+    assertEquals(
+      getResult1[0].promptHistory.length,
+      0,
+      "Effects: Version 1 has no prompt history.",
+    );
+    console.log(
+      `Query: _getVersionById(${version1Id}) -> Found version ${getResult1[0].versionNum}.`,
+    );
+
+    // Test 2: _getVersionById - version with prompt history
+    const getResult2 = await concept._getVersionById({ version: version2Id });
+    assert(Array.isArray(getResult2), "Query should return an array");
+    assertEquals(getResult2.length, 1, "Effects: Should return one version.");
+    assertEquals(
+      getResult2[0]._id,
+      version2Id,
+      "Effects: Should return the correct version.",
+    );
+    assertEquals(
+      getResult2[0].promptHistory.length,
+      1,
+      "Effects: Version 2 has one prompt history entry.",
+    );
+    assertEquals(
+      getResult2[0].promptHistory[0].status,
+      "Approved",
+      "Effects: Prompt history status is 'Approved'.",
+    );
+    console.log(
+      `Query: _getVersionById(${version2Id}) -> Found version ${getResult2[0].versionNum} with prompt history.`,
+    );
+
+    // Test 3: _getVersionById - non-existent version
+    const nonExistentVersionId = freshID();
+    const getResult3 = await concept._getVersionById({
+      version: nonExistentVersionId,
     });
-    const draftDetails1 = draftOutput1 as any;
-    const createdDraftResult1 = await versionDraftConcept.createDraft({
-      id: draftDetails1.draftId,
-      requester: draftDetails1.requester,
-      baseRecipe: draftDetails1.baseRecipe,
-      goal: draftDetails1.goal,
-      ingredients: draftDetails1.ingredients,
-      steps: draftDetails1.steps,
-      notes: draftDetails1.notes,
-      confidence: draftDetails1.confidence,
+    assert(Array.isArray(getResult3), "Query should return an array");
+    assertEquals(
+      getResult3.length,
+      0,
+      "Effects: Should return empty array for non-existent version.",
+    );
+    console.log(
+      `Query: _getVersionById(nonExistent) -> Empty array (correct).`,
+    );
+
+    // Test 4: _listVersionsByRecipe - multiple versions for one recipe
+    const listByRecipe1 = await concept._listVersionsByRecipe({
+      recipe: recipeA,
     });
-    const draftId1 = (createdDraftResult1 as { id: ID }).id;
-    let drafts = await versionDraftConcept._getDraftById({ id: draftId1 });
-    assertEquals(drafts.length, 1);
-    console.log("Draft created:", draftId1, "Goal:", aiGoal1);
+    assert(Array.isArray(listByRecipe1), "Query should return an array");
+    assertEquals(
+      listByRecipe1.length,
+      2,
+      "Effects: Should return two versions for recipe A.",
+    );
+    assertEquals(
+      listByRecipe1[0]._id,
+      version1Id,
+      "Effects: Should be ordered by creation (V1.0 first).",
+    );
+    assertEquals(
+      listByRecipe1[1]._id,
+      version2Id,
+      "Effects: Should be ordered by creation (V1.1 second).",
+    );
+    console.log(
+      `Query: _listVersionsByRecipe(${recipeA}) -> Found ${listByRecipe1.length} versions.`,
+    );
 
-    // 4. Approve the AI draft, leading to a new official version (1.1)
-    console.log("Trace Step 4: Approve AI draft 1 as new Version 1.1");
-    const newVersionNum1 = "1.1";
-    const approveOutput1 = await versionConcept.approveDraft({
-      author: vivien,
-      draftId: draftId1,
-      baseRecipe: principleRecipe,
-      newVersionNum: newVersionNum1,
-      draftDetails: { ...draftDetails1, goal: aiGoal1 }, // Ensure goal is passed back for history
+    // Test 5: _listVersionsByRecipe - single version for another recipe
+    const listByRecipe2 = await concept._listVersionsByRecipe({
+      recipe: recipeB,
     });
+    assert(Array.isArray(listByRecipe2), "Query should return an array");
+    assertEquals(
+      listByRecipe2.length,
+      1,
+      "Effects: Should return one version for recipe B.",
+    );
+    assertEquals(
+      listByRecipe2[0]._id,
+      version3Id,
+      "Effects: Should return the correct version.",
+    );
+    console.log(
+      `Query: _listVersionsByRecipe(${recipeB}) -> Found ${listByRecipe2.length} version.`,
+    );
 
-    // Simulate sync actions
-    const newVersionId1 = (approveOutput1 as { newVersionId: ID }).newVersionId;
-    await versionConcept.createVersion({
-      author: (approveOutput1 as any).author,
-      recipe: (approveOutput1 as any).recipe,
-      versionNum: (approveOutput1 as any).versionNum,
-      notes: (approveOutput1 as any).notes,
-      ingredients: (approveOutput1 as any).ingredients,
-      steps: (approveOutput1 as any).steps,
-      promptHistory: [(approveOutput1 as any).promptHistoryEntry],
+    // Test 6: _listVersionsByRecipe - no versions for a recipe
+    const listByRecipe3 = await concept._listVersionsByRecipe({
+      recipe: freshID(),
     });
-    await versionDraftConcept.deleteDraft({ id: draftId1 });
-    console.log("Approved draft promoted to Version:", newVersionId1);
+    assert(Array.isArray(listByRecipe3), "Query should return an array");
+    assertEquals(
+      listByRecipe3.length,
+      0,
+      "Effects: Should return empty array for recipe with no versions.",
+    );
+    console.log(
+      `Query: _listVersionsByRecipe(recipeWithNoVersions) -> Empty array (correct).`,
+    );
 
-    versions = await versionConcept._listVersionsByRecipe({ recipe: principleRecipe });
-    console.log("Versions after approving 1.1:", versions.map((v) => v.versionNum));
-    assertEquals(versions.length, 2);
-    assertEquals(versions.some((v) => v.versionNum === "1.1"), true);
-    assertEquals((await versionDraftConcept._getDraftById({ id: draftId1 })).length, 0);
-
-    // 5. Draft another version using AI ("Make it vegan")
-    console.log("Trace Step 5: Draft another version with AI - 'Make it vegan'");
-    const aiGoal2 = "Make it vegan.";
-    const draftOutput2 = await versionConcept.draftVersionWithAI({
-      author: vivien,
-      recipe: principleRecipe,
-      goal: aiGoal2,
+    // Test 7: _listVersionsByAuthor - multiple versions by one author
+    const listByAuthor1 = await concept._listVersionsByAuthor({
+      author: author1,
     });
-    const draftDetails2 = draftOutput2 as any;
-    const createdDraftResult2 = await versionDraftConcept.createDraft({
-      id: draftDetails2.draftId,
-      requester: draftDetails2.requester,
-      baseRecipe: draftDetails2.baseRecipe,
-      goal: draftDetails2.goal,
-      ingredients: draftDetails2.ingredients,
-      steps: draftDetails2.steps,
-      notes: draftDetails2.notes,
-      confidence: draftDetails2.confidence,
+    assert(Array.isArray(listByAuthor1), "Query should return an array");
+    assertEquals(
+      listByAuthor1.length,
+      2,
+      "Effects: Should return two versions for author 1.",
+    );
+    assert(
+      listByAuthor1.every((v) => v.author === author1),
+      "Effects: All returned versions should be by author 1.",
+    );
+    console.log(
+      `Query: _listVersionsByAuthor(${author1}) -> Found ${listByAuthor1.length} versions.`,
+    );
+
+    // Test 8: _listVersionsByAuthor - single version by another author
+    const listByAuthor2 = await concept._listVersionsByAuthor({
+      author: author2,
     });
-    const draftId2 = (createdDraftResult2 as { id: ID }).id;
-    drafts = await versionDraftConcept._getDraftById({ id: draftId2 });
-    assertEquals(drafts.length, 1);
-    console.log("Second draft created:", draftId2, "Goal:", aiGoal2);
+    assert(Array.isArray(listByAuthor2), "Query should return an array");
+    assertEquals(
+      listByAuthor2.length,
+      1,
+      "Effects: Should return one version for author 2.",
+    );
+    assertEquals(
+      listByAuthor2[0]._id,
+      version3Id,
+      "Effects: Should return the correct version.",
+    );
+    console.log(
+      `Query: _listVersionsByAuthor(${author2}) -> Found ${listByAuthor2.length} version.`,
+    );
 
-    // 6. Reject this second AI draft
-    console.log("Trace Step 6: Reject AI draft 2");
-    const rejectOutput = await versionConcept.rejectDraft({
-      author: vivien,
-      draftId: draftId2,
-      baseRecipe: principleRecipe,
-      goal: aiGoal2,
+    // Test 9: _listVersionsByAuthor - no versions by an author
+    const listByAuthor3 = await concept._listVersionsByAuthor({
+      author: freshID(),
     });
+    assert(Array.isArray(listByAuthor3), "Query should return an array");
+    assertEquals(
+      listByAuthor3.length,
+      0,
+      "Effects: Should return empty array for author with no versions.",
+    );
+    console.log(
+      `Query: _listVersionsByAuthor(authorWithNoVersions) -> Empty array (correct).`,
+    );
 
-    // Simulate sync action
-    await versionDraftConcept.deleteDraft({ id: draftId2 });
-    console.log("Rejected draft deleted:", draftId2);
+    // Test 10: Query for missing IDs (error cases)
+    const errorGetVersion = await concept._getVersionById({ id: "" as ID });
+    assertExists(
+      (errorGetVersion as { error: string }).error,
+      "Should return error for missing version ID",
+    );
+    console.log(
+      `Query: _getVersionById(empty) -> Error: ${
+        "error" in errorGetVersion ? errorGetVersion.error : "Unknown error"
+      }`,
+    );
 
-    versions = await versionConcept._listVersionsByRecipe({ recipe: principleRecipe });
-    console.log("Versions after rejecting 2nd draft:", versions.map((v) => v.versionNum));
-    assertEquals(versions.length, 2); // No new version for rejected draft
-    assertEquals((await versionDraftConcept._getDraftById({ id: draftId2 })).length, 0);
+    const errorListByRecipe = await concept._listVersionsByRecipe({
+      recipe: "" as ID,
+    });
+    assertExists(
+      (errorListByRecipe as { error: string }).error,
+      "Should return error for missing recipe ID",
+    );
+    console.log(
+      `Query: _listVersionsByRecipe(empty) -> Error: ${
+        "error" in errorListByRecipe ? errorListByRecipe.error : "Unknown error"
+      }`,
+    );
 
-    console.log("--- End Trace: Principle Fulfillment ---");
+    const errorListByAuthor = await concept._listVersionsByAuthor({
+      author: "" as ID,
+    });
+    assertExists(
+      (errorListByAuthor as { error: string }).error,
+      "Should return error for missing author ID",
+    );
+    console.log(
+      `Query: _listVersionsByAuthor(empty) -> Error: ${
+        "error" in errorListByAuthor ? errorListByAuthor.error : "Unknown error"
+      }`,
+    );
   });
 });
 ```

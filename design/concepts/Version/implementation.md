@@ -15,6 +15,29 @@
 
 [@Recipe](../../../src/concepts/Recipe/RecipeConcept.ts)
 
+[@User](../../../src/concepts/User/UserConcept.ts)
+
+[@VersionDraftConcept](../../../src/concepts/VersionDraft/VersionDraftConcept.ts)
+
+[@VersionConcept](../../../src/concepts/Version/VersionConcept.ts)
+
+[@VersionConcept.test](../../../src/concepts/Version/VersionConcept.test.ts)
+
+[@VersionDraftConcept.test](../../../src/concepts/VersionDraft/VersionDraftConcept.test.ts)
+
+[@database](../../../src/utils/database.ts)
+
+[@types](../../../src/utils/types.ts)
+
+[@concept_server](../../../src/concept_server.ts)
+
+[@deno.json](../../../deno.json)
+
+[@RecipeConcept.test](../../../src/concepts/Recipe/RecipeConcept.test.ts)
+
+[@Recipe](../Recipe/Recipe.md)
+
+
 # implement: Version
 
 
@@ -22,7 +45,7 @@
 
 ```typescript
 // file: src/concepts/Version/VersionConcept.ts
-import { Collection, Db } from "npm:mongodb";
+import type { Collection, Db } from "npm:mongodb";
 import { freshID } from "@utils/database.ts";
 import type { Empty, ID } from "@utils/types.ts";
 
@@ -85,14 +108,14 @@ interface VersionDoc {
 }
 
 export default class VersionConcept {
-  private versions: Collection<VersionDoc>;
+  public versions: Collection<VersionDoc>;
 
   constructor(private readonly db: Db) {
     this.versions = this.db.collection(PREFIX + "versions");
   }
 
   /**
-   * createVersion (author: User, recipe: Recipe, versionNum: String, notes: String, ingredients: List[Ingredient], steps: List[Step]): (version: ID) | (error: String)
+   * createVersion (author: User, recipe: Recipe, versionNum: String, notes: String, ingredients: List[Ingredient], steps: List[Step], promptHistory?: List[PromptHistoryEntry]): (version: ID) | (error: String)
    *
    * **purpose** Creates a new immutable version of a recipe.
    *
@@ -100,23 +123,30 @@ export default class VersionConcept {
    *
    * **effects** adds new version linked to recipe, sets `created`; returns the ID of the new version.
    */
-  async createVersion(
-    { author, recipe, versionNum, notes, ingredients, steps, promptHistory }: {
-      author: User;
-      recipe: Recipe;
-      versionNum: string;
-      notes: string;
-      ingredients: Ingredient[];
-      steps: Step[];
-      promptHistory?: PromptHistoryEntry[]; // Optional, for versions created via AI approval
-    },
-  ): Promise<{ version: ID } | { error: string }> {
+  async createVersion({
+    author,
+    recipe,
+    versionNum,
+    notes,
+    ingredients,
+    steps,
+    promptHistory, // Optional, for versions created via AI approval
+  }: {
+    author: User;
+    recipe: Recipe;
+    versionNum: string;
+    notes: string;
+    ingredients: Ingredient[];
+    steps: Step[];
+    promptHistory?: PromptHistoryEntry[];
+  }): Promise<{ version: ID } | { error: string }> {
     if (!author) return { error: "Author ID must be provided." };
     if (!recipe) return { error: "Base recipe ID must be provided." };
     if (!versionNum || versionNum.trim() === "") {
       return { error: "Version number cannot be empty." };
     }
-    if (notes === undefined || notes === null) { // Allow empty string notes
+    if (notes === undefined || notes === null) {
+      // Allow empty string notes
       return { error: "Notes for the version must be provided." };
     }
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
@@ -169,7 +199,11 @@ export default class VersionConcept {
       return { version: newId };
     } catch (e) {
       console.error("Error creating version:", e);
-      return { error: `Failed to create version: ${e.message}` };
+      return {
+        error: `Failed to create version: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      };
     }
   }
 
@@ -182,9 +216,13 @@ export default class VersionConcept {
    *
    * **effects** removes version.
    */
-  async deleteVersion(
-    { requester, version }: { requester: User; version: ID },
-  ): Promise<Empty | { error: string }> {
+  async deleteVersion({
+    requester,
+    version,
+  }: {
+    requester: User;
+    version: ID;
+  }): Promise<Empty | { error: string }> {
     if (!requester) return { error: "Requester ID must be provided." };
     if (!version) return { error: "Version ID must be provided." };
 
@@ -198,6 +236,8 @@ export default class VersionConcept {
       // If `recipe.owner` is allowed to delete any version of their recipe,
       // a synchronization would trigger this `deleteVersion` action with `recipe.owner` as the `requester`.
       if (existingVersion.author !== requester) {
+        // NOTE: A sync would typically handle authorization from `Recipe.owner`
+        // before calling this. This action itself only checks for `version.author`.
         return {
           error: "Requester is not the author of this version.",
         };
@@ -210,7 +250,11 @@ export default class VersionConcept {
       return {};
     } catch (e) {
       console.error("Error deleting version:", e);
-      return { error: `Failed to delete version: ${e.message}` };
+      return {
+        error: `Failed to delete version: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      };
     }
   }
 
@@ -225,14 +269,17 @@ export default class VersionConcept {
    * **effects** Simulates an LLM call to get proposed changes; outputs all data necessary for a sync to create a `VersionDraft`.
    *            Does not directly modify `Version` concept state, as `promptHistory` is populated when a draft is approved into a concrete version.
    */
-  async draftVersionWithAI(
-    { author, recipe, goal, options }: {
-      author: User;
-      recipe: Recipe; // The base recipe ID for which a draft is being created
-      goal: string;
-      options?: Record<string, any>;
-    },
-  ): Promise<
+  async draftVersionWithAI({
+    author,
+    recipe,
+    goal,
+    options, // options are passed to the LLM, but not stored by this concept
+  }: {
+    author: User;
+    recipe: Recipe; // The base recipe ID for which a draft is being created
+    goal: string;
+    options?: Record<string, any>;
+  }): Promise<
     | {
       draftId: ID;
       baseRecipe: Recipe;
@@ -252,18 +299,23 @@ export default class VersionConcept {
     if (!goal || goal.trim() === "") return { error: "Goal cannot be empty." };
 
     // --- Simulate LLM call and draft generation ---
+    // In a real application, this would involve calling an external LLM service.
+    // For this implementation, we'll return mock data based on simple keyword matching.
     const simulatedDraftId = freshID();
     const simulatedCreated = new Date();
     // Drafts expire after 24 hours
-    const simulatedExpires = new Date(simulatedCreated.getTime() + 24 * 60 * 60 * 1000);
+    const simulatedExpires = new Date(
+      simulatedCreated.getTime() + 24 * 60 * 60 * 1000,
+    );
     const simulatedConfidence = 0.85; // Example confidence score from AI
 
+    // Mock initial ingredients and steps (could fetch from a RecipeConcept query if available)
     let simulatedIngredients: Ingredient[] = [
       { name: "Flour", quantity: "2 cups" },
       { name: "Sugar", quantity: "1 cup" },
       { name: "Eggs", quantity: "2 large" },
     ];
-    let simulatedSteps: Step[] = [
+    const simulatedSteps: Step[] = [
       { description: "Preheat oven to 350F.", duration: 10 },
       { description: "Mix dry ingredients.", duration: 5 },
       { description: "Add wet ingredients to dry and combine.", duration: 5 },
@@ -281,17 +333,29 @@ export default class VersionConcept {
         { name: "Vegetable oil", quantity: "0.5 cup" },
         { name: "Baking powder", quantity: "1 tsp" },
       ];
-      simulatedNotes += " Modified to be vegan-friendly by substituting eggs/dairy.";
+      simulatedNotes +=
+        " Modified to be vegan-friendly by substituting eggs/dairy.";
     } else if (goal.toLowerCase().includes("cut sugar by half")) {
       simulatedIngredients = simulatedIngredients.map((ing) => {
-        if (ing.name.toLowerCase() === "sugar" && ing.quantity.includes("cup")) {
-          return { ...ing, quantity: "0.5 cup" }; // Halving 1 cup
+        if (
+          ing.name.toLowerCase() === "sugar" &&
+          ing.quantity.includes("cup")
+        ) {
+          // Assuming "1 cup" sugar, change to "0.5 cup"
+          return { ...ing, quantity: "0.5 cup" };
         }
         return ing;
       });
       simulatedNotes += " Reduced sugar by 50%.";
-    } else if (goal.toLowerCase().includes("add heat") || goal.toLowerCase().includes("spicy")) {
-      simulatedIngredients.push({ name: "Red pepper flakes", quantity: "1 tsp", notes: "adjust to taste" });
+    } else if (
+      goal.toLowerCase().includes("add heat") ||
+      goal.toLowerCase().includes("spicy")
+    ) {
+      simulatedIngredients.push({
+        name: "Red pepper flakes",
+        quantity: "1 tsp",
+        notes: "adjust to taste",
+      });
       simulatedNotes += " Added a kick of heat with red pepper flakes.";
     }
     // --- End Simulation ---
@@ -323,21 +387,25 @@ export default class VersionConcept {
    * **effects** Outputs data to trigger: 1) creation of a new `Version` (including the approved `promptHistoryEntry`), and 2) deletion of the `VersionDraft`.
    *            This action does not directly modify `Version` concept state, but prepares the data for a new `Version` record to be created via sync.
    */
-  async approveDraft(
-    { author, draftId, baseRecipe, newVersionNum, draftDetails }: {
-      author: User;
-      draftId: ID;
-      baseRecipe: Recipe;
-      newVersionNum: string;
-      draftDetails: {
-        ingredients: Ingredient[];
-        steps: Step[];
-        notes: string;
-        goal: string; // Original goal to record in promptHistory
-        confidence?: number;
-      };
-    },
-  ): Promise<
+  async approveDraft({
+    author,
+    draftId,
+    baseRecipe,
+    newVersionNum,
+    draftDetails, // Contains the actual ingredients, steps, notes, and original goal from the draft
+  }: {
+    author: User;
+    draftId: ID;
+    baseRecipe: Recipe;
+    newVersionNum: string;
+    draftDetails: {
+      ingredients: Ingredient[];
+      steps: Step[];
+      notes: string;
+      goal: string; // Original goal from the draft to record in promptHistory
+      confidence?: number;
+    };
+  }): Promise<
     | {
       newVersionId: ID;
       author: User;
@@ -358,8 +426,11 @@ export default class VersionConcept {
       return { error: "New version number cannot be empty." };
     }
     if (
-      !draftDetails || !Array.isArray(draftDetails.ingredients) ||
-      !Array.isArray(draftDetails.steps) || !draftDetails.notes
+      !draftDetails ||
+      !Array.isArray(draftDetails.ingredients) ||
+      !Array.isArray(draftDetails.steps) ||
+      !draftDetails.notes ||
+      !draftDetails.goal
     ) {
       return { error: "Incomplete draft details provided." };
     }
@@ -377,7 +448,6 @@ export default class VersionConcept {
     }
 
     // Prepare the PromptHistoryEntry for the NEW version being created.
-    // This is derived from the draftDetails passed.
     const promptHistoryEntry: PromptHistoryEntry = {
       promptText: draftDetails.goal,
       modelName: "SimulatedAIModel", // Placeholder for actual LLM used
@@ -389,7 +459,7 @@ export default class VersionConcept {
     const newVersionId = freshID();
 
     // Output all necessary info for syncs to create a new Version and delete the VersionDraft.
-    // The `createVersion` action (above) will use `newVersionId` and `promptHistoryEntry`.
+    // The `createVersion` action (above) will use `newVersionId` and `promptHistoryEntry` from this output.
     return {
       newVersionId: newVersionId,
       author: author,
@@ -414,21 +484,26 @@ export default class VersionConcept {
    *            This `promptHistoryEntry` is not stored within the `Version` concept itself by this action,
    *            as no `VersionDoc` is created from a rejected draft.
    */
-  async rejectDraft(
-    { author, draftId, baseRecipe, goal }: {
-      author: User;
-      draftId: ID;
-      baseRecipe: Recipe;
-      goal: string; // Original goal to record in promptHistoryEntry
-    },
-  ): Promise<
+  async rejectDraft({
+    author,
+    draftId,
+    baseRecipe,
+    goal,
+  }: {
+    author: User;
+    draftId: ID;
+    baseRecipe: Recipe;
+    goal: string; // Original goal to record in promptHistoryEntry
+  }): Promise<
     | { draftToDeleteId: ID; promptHistoryEntry: PromptHistoryEntry }
     | { error: string }
   > {
     if (!author) return { error: "Author ID must be provided." };
     if (!draftId) return { error: "Draft ID must be provided." };
     if (!baseRecipe) return { error: "Base recipe ID must be provided." };
-    if (!goal || goal.trim() === "") return { error: "Goal must be provided for logging." };
+    if (!goal || goal.trim() === "") {
+      return { error: "Goal must be provided for logging the rejection." };
+    }
 
     // Prepare the PromptHistoryEntry for the rejected draft.
     const promptHistoryEntry: PromptHistoryEntry = {
@@ -440,7 +515,8 @@ export default class VersionConcept {
     };
 
     // This action doesn't modify the VersionConcept's state directly.
-    // It outputs the draftId to be deleted and the history entry for potential logging elsewhere.
+    // It outputs the draftId to be deleted and the history entry for potential logging elsewhere
+    // (e.g., if a global AI interaction log is maintained).
     return { draftToDeleteId: draftId, promptHistoryEntry: promptHistoryEntry };
   }
 
@@ -455,9 +531,11 @@ export default class VersionConcept {
    *
    * **effects** Returns an array containing the Version document if found, otherwise an empty array or an error.
    */
-  async _getVersionById(
-    { version }: { version: ID },
-  ): Promise<VersionDoc[] | { error: string }> {
+  async _getVersionById({
+    version,
+  }: {
+    version: ID;
+  }): Promise<VersionDoc[] | { error: string }> {
     if (!version) return { error: "Version ID must be provided." };
 
     try {
@@ -465,7 +543,11 @@ export default class VersionConcept {
       return foundVersion ? [foundVersion] : []; // Queries return an array
     } catch (e) {
       console.error("Error retrieving version by ID:", e);
-      return { error: `Failed to retrieve version: ${e.message}` };
+      return {
+        error: `Failed to retrieve version: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      };
     }
   }
 
@@ -478,19 +560,26 @@ export default class VersionConcept {
    *
    * **effects** Returns an array of Version documents for the given recipe, ordered by creation time.
    */
-  async _listVersionsByRecipe(
-    { recipe }: { recipe: Recipe },
-  ): Promise<VersionDoc[] | { error: string }> {
+  async _listVersionsByRecipe({
+    recipe,
+  }: {
+    recipe: Recipe;
+  }): Promise<VersionDoc[] | { error: string }> {
     if (!recipe) return { error: "Recipe ID must be provided." };
 
     try {
-      const foundVersions = await this.versions.find({ baseRecipe: recipe })
+      const foundVersions = await this.versions
+        .find({ baseRecipe: recipe })
         .sort({ created: 1 }) // Order by creation time
         .toArray();
       return foundVersions;
     } catch (e) {
       console.error("Error listing versions by recipe:", e);
-      return { error: `Failed to list versions: ${e.message}` };
+      return {
+        error: `Failed to list versions: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      };
     }
   }
 
@@ -503,9 +592,11 @@ export default class VersionConcept {
    *
    * **effects** Returns an array of Version documents authored by the given user.
    */
-  async _listVersionsByAuthor(
-    { author }: { author: User },
-  ): Promise<VersionDoc[] | { error: string }> {
+  async _listVersionsByAuthor({
+    author,
+  }: {
+    author: User;
+  }): Promise<VersionDoc[] | { error: string }> {
     if (!author) return { error: "Author ID must be provided." };
 
     try {
@@ -513,7 +604,11 @@ export default class VersionConcept {
       return foundVersions;
     } catch (e) {
       console.error("Error listing versions by author:", e);
-      return { error: `Failed to list versions: ${e.message}` };
+      return {
+        error: `Failed to list versions: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      };
     }
   }
 }

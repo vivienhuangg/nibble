@@ -13,83 +13,6 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "design/concepts/Version/error-message.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "error-message"
-            }
-          },
-          {
-            "id": "1a5157a600287eae",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/concepts/Version/debugging.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "debugging"
-            }
-          }
-        ],
-        "currentTab": 1
-      },
-      {
-        "id": "70d6ef1a4ab85a23",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "6615ef21c3ba2857",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/concepts/User/implementation.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "implementation"
-            }
-          },
-          {
-            "id": "4341efd43a13d2fc",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/concepts/Recipe/implementation.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "implementation"
-            }
-          },
-          {
-            "id": "26ef41db61982079",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/concepts/Annotation/implementation.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "implementation"
-            }
-          },
-          {
-            "id": "7d1fbbe7d067c440",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
                 "file": "design/concepts/Version/test-output.md",
                 "mode": "source",
                 "source": false
@@ -97,51 +20,8 @@
               "icon": "lucide-file",
               "title": "test-output"
             }
-          },
-          {
-            "id": "74565cda095e63c8",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/concepts/Version/error-message.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "error-message"
-            }
-          },
-          {
-            "id": "3e122bd4fda48060",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/background/assignment-4a-guidelines.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "assignment-4a-guidelines"
-            }
-          },
-          {
-            "id": "4512d004131703d6",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "design/concepts/Version/Version.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Version"
-            }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -173,12 +53,12 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "mongo",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
                 "extraContext": false,
-                "sortOrder": "alphabetical"
+                "sortOrder": "alphabeticalReverse"
               },
               "icon": "lucide-search",
               "title": "Search"
@@ -228,7 +108,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "design/concepts/Recipe/implementation.md",
+                "file": "design/concepts/Version/test-output.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -238,7 +118,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for implementation"
+              "title": "Backlinks for test-output"
             }
           },
           {
@@ -302,43 +182,43 @@
       "bases:Create new base": false
     }
   },
-  "active": "4341efd43a13d2fc",
+  "active": "539c37a77c59fc1b",
   "lastOpenFiles": [
-    "design/brainstorming/checklist.md",
-    "design/concepts/Version/debugging.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_015551.377ff2a8.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.f17842a6.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_015526.6ac55fb4.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/prompt.eb4b83a6.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/file.97d0c887.md",
-    "design/concepts/Version/error-message.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_015354.2744fa8a.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.0539c6d5.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_015325.2b4706ad.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/file.8a5b5bfe.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/file.06e60e4c.md",
-    "context/Users/vivienhuang/6.1040/nibble/src/utils/database.ts/20251019_015325.e19d024c.md",
-    "context/Users/vivienhuang/6.1040/nibble/src/utils/database.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/utils",
-    "design/concepts/VersionDraft/implementation.md",
     "design/concepts/Version/testing.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_015115.67c090b3.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.8e4a8a75.md",
-    "design/concepts/VersionDraft/design-updates.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_015047.0b556063.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.6d76b65d.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/file.54b1c99c.md",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Version/VersionConcept.test.ts/20251019_015047.54b1c99c.md",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Version/VersionConcept.test.ts/20251019_014928.97d0c887.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/20251019_014902.3b340a6d.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.6c5db0c9.md",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Version/VersionConcept.test.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Version/VersionConcept.ts",
-    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Version",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/VersionDraft/testing.md/steps",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/VersionDraft/implementation.md/steps",
-    "context/Users/vivienhuang/6.1040/nibble/design/concepts/VersionDraft"
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_124754.700a1c5b.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.9969cecc.md",
+    "design/concepts/VersionDraft/testing.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_124639.e09c6e9c.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.c4263a7c.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/VersionDraft/testing.md/20251019_124608.54c77ee8.md",
+    "README.md",
+    "design/concepts/User/testing.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Notebook/testing.md/steps/_.3a59af90.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_123700.90037523.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.32a007d6.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/20251019_123547.df8777b2.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.56ef8c56.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.46fd921e.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/_.c43f6d91.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/response.4089903e.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.af56ca98.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.1281645b.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.45b7b259.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.d6ea93fa.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.e19d024c.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.2a0b4b28.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.9f6b8e71.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.06e60e4c.md",
+    "context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/testing.md/steps/file.f1343dfb.md",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Recipe/RecipeConcept.test.ts",
+    "context/Users/vivienhuang/6.1040/nibble/deno.json",
+    "context/Users/vivienhuang/6.1040/nibble/src/concept_server.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/utils/types.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/VersionDraft/VersionDraftConcept.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/VersionDraft/VersionDraftConcept.test.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/VersionDraft",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/User/UserConcept.ts",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/User",
+    "context/Users/vivienhuang/6.1040/nibble/src/concepts/Notebook/NotebookConcept.test.ts"
   ]
 }

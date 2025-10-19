@@ -1,8 +1,8 @@
 import { Hono } from "jsr:@hono/hono";
-import { getDb } from "@utils/database.ts";
-import { walk } from "jsr:@std/fs";
 import { parseArgs } from "jsr:@std/cli/parse-args";
+import { walk } from "jsr:@std/fs";
 import { toFileUrl } from "jsr:@std/path/to-file-url";
+import { getDb } from "@utils/database.ts";
 
 // Parse command-line arguments for port and base URL
 const flags = parseArgs(Deno.args, {
@@ -64,10 +64,10 @@ async function main() {
 
       const methodNames = Object.getOwnPropertyNames(
         Object.getPrototypeOf(instance),
-      )
-        .filter((name) =>
-          name !== "constructor" && typeof instance[name] === "function"
-        );
+      ).filter(
+        (name) =>
+          name !== "constructor" && typeof instance[name] === "function",
+      );
 
       for (const methodName of methodNames) {
         const actionName = methodName;
@@ -86,10 +86,7 @@ async function main() {
         console.log(`  - Endpoint: POST ${route}`);
       }
     } catch (e) {
-      console.error(
-        `! Error loading concept from ${conceptFilePath}:`,
-        e,
-      );
+      console.error(`! Error loading concept from ${conceptFilePath}:`, e);
     }
   }
 
