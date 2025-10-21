@@ -1,17 +1,16 @@
-[@api-extraction-from-spec](api-extraction-from-spec.md)
 
+[@api-extraction-from-spec](../../tools/api-extraction-from-spec.md)
 # Extracting from code
 
 The following is an explanation of how concepts are implemented, for the purposes of understanding how to extract an API.
 
-[@implementing-concepts](../background/implementing-concepts.md)
+[@implementing-concepts](../../background/implementing-concepts.md)
 
 # prompt: 
 
 Now, analyze the following Concept Implementation and generate the API documentation based on these instructions.
 
-[@AnnotationConcept](../../src/concepts/Annotation/AnnotationConcept.ts)
-
+[@AnnotationConcept](../../../src/concepts/Annotation/AnnotationConcept.ts)
 # response:
 
 # API Specification: Annotation Concept
@@ -24,22 +23,23 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/Annotation/annotate
 
-**Description:** Adds a new contextual note to a specific ingredient or step of a recipe.
+**Description:** Adds a new unresolved annotation to a recipe, associating text with a specific ingredient or step.
 
 **Requirements:**
-- recipe exists;
-- text ≠ "";
-- 0 ≤ index < |target list| for targetKind (Note: `recipe exists` and `target list` validation are assumed to be handled by higher-level logic or syncs, as the Annotation concept operates polymorphically on Recipe IDs and doesn't know their internal structure. `text` emptiness is validated here.)
+- recipe exists
+- text ≠ ""
+- 0 ≤ index < |target list| for targetKind
 
 **Effects:**
-- adds new unresolved annotation, sets `created`
+- adds new unresolved annotation
+- sets `created`
 
 **Request Body:**
 ```json
 {
-  "author": "string",
-  "recipe": "string",
-  "targetKind": "string",
+  "author": "string (User ID)",
+  "recipe": "string (Recipe ID)",
+  "targetKind": "string ('Ingredient' | 'Step')",
   "index": "number",
   "text": "string"
 }
@@ -48,7 +48,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Success Response Body (Action):**
 ```json
 {
-  "annotation": "string"
+  "annotation": "string (Annotation ID)"
 }
 ```
 
@@ -63,10 +63,11 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/Annotation/editAnnotation
 
-**Description:** Modifies the text of an existing annotation.
+**Description:** Allows the author to modify the text of an existing annotation.
 
 **Requirements:**
-- annotation exists and author = annotation.author
+- annotation exists
+- author = annotation.author
 
 **Effects:**
 - annotation.text := newText
@@ -74,8 +75,8 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Request Body:**
 ```json
 {
-  "author": "string",
-  "annotation": "string",
+  "author": "string (User ID)",
+  "annotation": "string (Annotation ID)",
   "newText": "string"
 }
 ```
@@ -96,10 +97,11 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/Annotation/resolveAnnotation
 
-**Description:** Changes the resolution status of an annotation (marks it as resolved or unresolved).
+**Description:** Changes the resolution status of an annotation.
 
 **Requirements:**
-- annotation exists and resolver canView annotation.recipe (Note: `canView` validation is external to this concept and should be handled by higher-level logic or syncs.)
+- annotation exists
+- resolver canView annotation.recipe
 
 **Effects:**
 - annotation.resolved := resolved
@@ -107,8 +109,8 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Request Body:**
 ```json
 {
-  "resolver": "string",
-  "annotation": "string",
+  "resolver": "string (User ID)",
+  "annotation": "string (Annotation ID)",
   "resolved": "boolean"
 }
 ```
@@ -129,10 +131,11 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/Annotation/deleteAnnotation
 
-**Description:** Removes an annotation from the system.
+**Description:** Removes an existing annotation, but only if performed by its author.
 
 **Requirements:**
-- annotation exists and author = annotation.author
+- annotation exists
+- author = annotation.author
 
 **Effects:**
 - removes annotation
@@ -140,8 +143,8 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Request Body:**
 ```json
 {
-  "author": "string",
-  "annotation": "string"
+  "author": "string (User ID)",
+  "annotation": "string (Annotation ID)"
 }
 ```
 
@@ -172,7 +175,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Request Body:**
 ```json
 {
-  "recipe": "string"
+  "recipe": "string (Recipe ID)"
 }
 ```
 
@@ -181,13 +184,13 @@ Now, analyze the following Concept Implementation and generate the API documenta
 [
   {
     "annotation": {
-      "_id": "string",
-      "author": "string",
-      "recipe": "string",
-      "targetKind": "string",
+      "_id": "string (Annotation ID)",
+      "author": "string (User ID)",
+      "recipe": "string (Recipe ID)",
+      "targetKind": "string ('Ingredient' | 'Step')",
       "targetIndex": "number",
       "text": "string",
-      "created": "string",
+      "created": "string (ISO 8601 DateTime)",
       "resolved": "boolean"
     }
   }
@@ -205,7 +208,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/Annotation/_getAnnotationById
 
-**Description:** Retrieves a specific annotation by its ID.
+**Description:** Retrieves a specific annotation by its unique ID.
 
 **Requirements:**
 - annotation exists (implicitly, will return an empty array if not found)
@@ -216,7 +219,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Request Body:**
 ```json
 {
-  "annotation": "string"
+  "annotation": "string (Annotation ID)"
 }
 ```
 
@@ -225,13 +228,13 @@ Now, analyze the following Concept Implementation and generate the API documenta
 [
   {
     "annotation": {
-      "_id": "string",
-      "author": "string",
-      "recipe": "string",
-      "targetKind": "string",
+      "_id": "string (Annotation ID)",
+      "author": "string (User ID)",
+      "recipe": "string (Recipe ID)",
+      "targetKind": "string ('Ingredient' | 'Step')",
       "targetIndex": "number",
       "text": "string",
-      "created": "string",
+      "created": "string (ISO 8601 DateTime)",
       "resolved": "boolean"
     }
   }
