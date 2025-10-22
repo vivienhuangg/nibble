@@ -322,4 +322,20 @@ export default class NotebookConcept {
     const notebooks = await this.notebooks.find({ members: member }).toArray();
     return notebooks;
   }
+
+  /**
+   * _getNotebooksContainingRecipe (recipe: Recipe): (notebook: NotebookDocument)
+   *
+   * **requires** recipe exists (implicitly)
+   *
+   * **effects** returns all notebooks that contain the specified recipe
+   */
+  async _getNotebooksContainingRecipe({
+    recipe,
+  }: {
+    recipe: Recipe;
+  }): Promise<NotebookDocument[] | { error: string }> {
+    const notebooks = await this.notebooks.find({ recipes: recipe }).toArray();
+    return notebooks;
+  }
 }

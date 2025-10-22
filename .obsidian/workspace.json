@@ -211,8 +211,13 @@
       "bases:Create new base": false
     }
   },
-  "active": "22d20c1b2f83ef4c",
+  "active": "9b42b4503c7d88ad",
   "lastOpenFiles": [
+    "COMPONENT_DATAFLOW.md",
+    "API_QUICK_REFERENCE.md",
+    "FRONTEND_BACKEND_CROSSREF.md",
+    "clear-db.ts",
+    "api-spec.md",
     "design/concepts/Ingredient/api-spec.md",
     "design/concepts/Notebook/api-spec.md",
     "design/concepts/Recipe/api-spec.md",
@@ -235,10 +240,6 @@
     "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.70b30df5.md",
     "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.5da05fda.md",
     "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.534e93ad.md",
-    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.3a59af90.md",
-    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.331f5a1f.md",
-    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.2086d81d.md",
-    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps/_.1bf7fdfc.md",
     "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version/api-spec.md/steps",
     "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/Version",
     "context/Users/vivienhuang/6.1040/nibble-backend/src/concepts/Version/VersionConcept.ts",
@@ -247,7 +248,6 @@
     "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/VersionDraft",
     "context/Users/vivienhuang/6.1040/nibble-backend/src/concepts/VersionDraft/VersionDraftConcept.ts",
     "context/Users/vivienhuang/6.1040/nibble-backend/src/concepts/VersionDraft",
-    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/User/api-spec.md/steps",
-    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/User"
+    "context/Users/vivienhuang/6.1040/nibble-backend/design/concepts/User/api-spec.md/steps"
   ]
 }
