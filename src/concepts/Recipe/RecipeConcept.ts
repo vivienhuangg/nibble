@@ -1,6 +1,8 @@
-import { type Collection, type Db, ObjectId } from "npm:mongodb";
+import { GoogleGenAI } from "npm:@google/genai";
+import type { Collection, Db } from "npm:mongodb";
 import { freshID } from "@utils/database.ts";
 import type { Empty, ID } from "@utils/types.ts";
+import "jsr:@std/dotenv/load";
 
 // Declare collection prefix, use concept name
 const PREFIX = "Recipe" + ".";
@@ -32,7 +34,6 @@ interface Ingredient {
 interface Step {
   // _id: StepId; // Steps are embedded, so no top-level ID needed in this context
   description: string;
-  duration?: number; // in minutes
   notes?: string; // e.g., "stir until golden brown"
 }
 
@@ -49,6 +50,7 @@ interface RecipeDoc {
   ingredients: Ingredient[];
   steps: Step[];
   tags: string[]; // Representing Set[String]
+  forkedFrom?: RecipeId; // Optional: ID of the recipe this was forked from
   created: Date;
   updated: Date;
 }
@@ -61,12 +63,12 @@ export default class RecipeConcept {
   }
 
   /**
-   * createRecipe(owner: User, title: String, ingredients: List[Ingredient], steps: List[Step], description?: String)
+   * createRecipe(owner: User, title: String, ingredients: List[Ingredient], steps: List[Step], description?: String, forkedFrom?: RecipeId)
    *   : (recipe: RecipeId) | (error: String)
    *
-   * **requires** owner exists; title ≠ ""; ingredients and steps well-formed
+   * **requires** owner exists; title ≠ ""; ingredients and steps well-formed; if forkedFrom is provided, that recipe must exist
    *
-   * **effects** adds new recipe with empty tag set, sets creation/update times; returns the new recipe's ID
+   * **effects** adds new recipe with empty tag set, sets creation/update times; optionally tracks the parent recipe if forkedFrom is provided; returns the new recipe's ID
    */
   async createRecipe({
     owner,
@@ -74,12 +76,14 @@ export default class RecipeConcept {
     ingredients,
     steps,
     description,
+    forkedFrom,
   }: {
     owner: User;
     title: string;
     ingredients: Ingredient[];
     steps: Step[];
     description?: string;
+    forkedFrom?: RecipeId;
   }): Promise<{ recipe: RecipeId } | { error: string }> {
     // Requires: owner exists (assumed valid ID for this concept's scope, actual check in sync)
     if (!owner) {
@@ -106,6 +110,23 @@ export default class RecipeConcept {
       }
     }
 
+    // If forkedFrom is provided, validate that the parent recipe exists
+    if (forkedFrom) {
+      try {
+        const parentRecipe = await this.recipes.findOne({ _id: forkedFrom });
+        if (!parentRecipe) {
+          return { error: "Parent recipe (forkedFrom) does not exist." };
+        }
+      } catch (e) {
+        console.error(
+          `Failed to validate parent recipe: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+        );
+        return { error: "Failed to validate parent recipe." };
+      }
+    }
+
     const now = new Date();
     const newRecipeId = freshID();
     const newRecipe: RecipeDoc = {
@@ -116,6 +137,7 @@ export default class RecipeConcept {
       ingredients,
       steps,
       tags: [], // Start with an empty tag set
+      forkedFrom, // Will be undefined if not provided
       created: now,
       updated: now,
     };
@@ -469,6 +491,350 @@ export default class RecipeConcept {
         }`,
       );
       return { error: "Failed to search recipes due to a database error." };
+    }
+  }
+
+  /**
+   * _getForkCount(recipe: RecipeId): { count: number } | { error: String }
+   *
+   * **requires** recipe exists
+   *
+   * **effects** returns the count of recipes that have been forked from the specified recipe
+   */
+  async _getForkCount({
+    recipe,
+  }: {
+    recipe: RecipeId;
+  }): Promise<{ count: number } | { error: string }> {
+    if (!recipe) {
+      return { error: "Recipe ID must be provided." };
+    }
+
+    try {
+      // First check if the recipe exists
+      const existingRecipe = await this.recipes.findOne({ _id: recipe });
+      if (!existingRecipe) {
+        return { error: "Recipe not found." };
+      }
+
+      // Count all recipes that have this recipe as their forkedFrom value
+      const forkCount = await this.recipes.countDocuments({
+        forkedFrom: recipe,
+      });
+      return { count: forkCount };
+    } catch (e) {
+      console.error(
+        `Failed to get fork count for recipe ${recipe}: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+      return { error: "Failed to get fork count due to a database error." };
+    }
+  }
+
+  /**
+   * _listForksOfRecipe(recipe: RecipeId): { recipe: RecipeDoc[] } | { error: String }
+   *
+   * **requires** recipe exists
+   *
+   * **effects** returns all recipes that have been forked from the specified recipe
+   */
+  async _listForksOfRecipe({
+    recipe,
+  }: {
+    recipe: RecipeId;
+  }): Promise<{ recipe: RecipeDoc[] } | { error: string }> {
+    if (!recipe) {
+      return { error: "Recipe ID must be provided." };
+    }
+
+    try {
+      // First check if the recipe exists
+      const existingRecipe = await this.recipes.findOne({ _id: recipe });
+      if (!existingRecipe) {
+        return { error: "Recipe not found." };
+      }
+
+      // Find all recipes that have this recipe as their forkedFrom value
+      const forks = await this.recipes.find({ forkedFrom: recipe }).toArray();
+      return { recipe: forks };
+    } catch (e) {
+      console.error(
+        `Failed to list forks for recipe ${recipe}: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+      return { error: "Failed to list forks due to a database error." };
+    }
+  }
+
+  /**
+   * draftRecipeWithAI (author: User, recipe: RecipeId, goal: String):
+   *   (draftId: ID, baseRecipe: RecipeId, requester: User, goal: String, ingredients: List[Ingredient], steps: Step[], notes: String, confidence?: number, created: Date, expires: Date) | (error: String)
+   *
+   * **purpose** Uses AI to suggest modifications to a recipe based on a user's goal.
+   *
+   * **requires** recipe exists; goal ≠ ""; GEMINI_API_KEY is set
+   *
+   * **effects** Calls Gemini AI with the recipe data and goal; returns draft data for creating a VersionDraft
+   */
+  async draftRecipeWithAI({
+    author,
+    recipe,
+    goal,
+  }: {
+    author: User;
+    recipe: RecipeId;
+    goal: string;
+  }): Promise<
+    | {
+      draftId: ID;
+      baseRecipe: RecipeId;
+      requester: User;
+      goal: string;
+      ingredients: Ingredient[];
+      steps: Step[];
+      notes: string;
+      confidence?: number;
+      created: Date;
+      expires: Date;
+    }
+    | { error: string }
+  > {
+    if (!author) return { error: "Author ID must be provided." };
+    if (!recipe) return { error: "Recipe ID must be provided." };
+    if (!goal || goal.trim() === "") return { error: "Goal cannot be empty." };
+
+    // Fetch the actual recipe data
+    const recipeResult = await this._getRecipeById({ recipe });
+    if ("error" in recipeResult) {
+      return { error: `Failed to fetch recipe: ${recipeResult.error}` };
+    }
+
+    const recipeData = recipeResult.recipe[0];
+    if (!recipeData) {
+      return { error: "Recipe not found." };
+    }
+
+    // --- Real LLM call using Gemini ---
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash-exp";
+
+    if (!GEMINI_API_KEY) {
+      return {
+        error:
+          "GEMINI_API_KEY environment variable is not set. Cannot generate AI draft.",
+      };
+    }
+
+    const draftId = freshID();
+    const created = new Date();
+    const expires = new Date(created.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+      // Format the recipe data for the prompt
+      const ingredientsText = recipeData.ingredients
+        .map((ing: Ingredient) => {
+          let text = `- ${ing.name}: ${ing.quantity}`;
+          if (ing.unit) text += ` ${ing.unit}`;
+          if (ing.notes) text += ` (${ing.notes})`;
+          return text;
+        })
+        .join("\n");
+
+      const stepsText = recipeData.steps
+        .map((step: Step, idx: number) => {
+          let text = `${idx + 1}. ${step.description}`;
+          if (step.notes) text += ` (${step.notes})`;
+          return text;
+        })
+        .join("\n");
+
+      const prompt =
+        `You are a professional chef assistant. A user wants to modify the following recipe.
+
+ORIGINAL RECIPE: "${recipeData.title}"
+${recipeData.description ? `Description: ${recipeData.description}` : ""}
+
+INGREDIENTS:
+${ingredientsText}
+
+STEPS:
+${stepsText}
+
+USER'S GOAL: ${goal}
+
+Please provide a modified version of this recipe that achieves the user's goal. Return ONLY a JSON object with this exact structure (no markdown, no explanation):
+{
+  "ingredients": [{"name": "string", "quantity": "string", "unit": "string (optional)", "notes": "string (optional)"}],
+  "steps": [{"description": "string", "notes": "string (optional)"}],
+  "notes": "Brief summary of changes made",
+  "confidence": 0.0-1.0
+}`;
+
+      const result = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt,
+      });
+
+      // Extract text from Gemini API response
+      const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text ||
+        result.text;
+
+      if (!responseText) {
+        console.error(
+          "Failed to extract text from response. Full result:",
+          JSON.stringify(result, null, 2),
+        );
+        return {
+          error: `No response from AI model. Debug info logged to console.`,
+        };
+      }
+
+      // Parse the JSON response
+      let llmResponse: {
+        ingredients?: Ingredient[];
+        steps?: Step[];
+        notes?: string;
+        confidence?: number;
+      };
+      try {
+        // Remove markdown code blocks if present
+        const cleanedResponse = responseText
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "")
+          .trim();
+        llmResponse = JSON.parse(cleanedResponse);
+      } catch (_error) {
+        console.error("Failed to parse LLM response:", responseText);
+        return {
+          error:
+            "Failed to parse AI response. The AI returned invalid JSON. Please try again.",
+        };
+      }
+
+      return {
+        draftId,
+        baseRecipe: recipe,
+        requester: author,
+        goal,
+        ingredients: llmResponse.ingredients || [],
+        steps: llmResponse.steps || [],
+        notes: llmResponse.notes ||
+          `AI-generated draft based on goal: "${goal}"`,
+        confidence: llmResponse.confidence || 0.75,
+        created,
+        expires,
+      };
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      return {
+        error: `Failed to call AI service: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      };
+    }
+  }
+
+  /**
+   * applyDraft (owner: User, recipe: RecipeId, draftDetails: { ingredients: List[Ingredient], steps: Step[], notes: String }): Empty | (error: String)
+   *
+   * **purpose** Applies an approved AI draft to the original recipe, modifying it directly.
+   *
+   * **requires** owner = recipe.owner; draft details must be well-formed
+   *
+   * **effects** Updates the recipe's ingredients and steps with the draft content; adds notes to description; updates timestamp
+   */
+  async applyDraft({
+    owner,
+    recipe,
+    draftDetails,
+  }: {
+    owner: User;
+    recipe: RecipeId;
+    draftDetails: {
+      ingredients: Ingredient[];
+      steps: Step[];
+      notes: string;
+    };
+  }): Promise<Empty | { error: string }> {
+    if (!owner || !recipe) {
+      return { error: "Owner ID and Recipe ID must be provided." };
+    }
+
+    try {
+      const existingRecipe = await this.recipes.findOne({ _id: recipe });
+      if (!existingRecipe) {
+        return { error: "Recipe not found." };
+      }
+
+      if (existingRecipe.owner !== owner) {
+        return {
+          error:
+            "Provided owner is not the actual owner of the recipe and cannot update it.",
+        };
+      }
+
+      // Validate draft details
+      if (
+        !Array.isArray(draftDetails.ingredients) ||
+        draftDetails.ingredients.length === 0
+      ) {
+        return { error: "Draft must have at least one ingredient." };
+      }
+      if (
+        !Array.isArray(draftDetails.steps) ||
+        draftDetails.steps.length === 0
+      ) {
+        return { error: "Draft must have at least one step." };
+      }
+
+      // Validate ingredients and steps structure
+      for (const ing of draftDetails.ingredients) {
+        if (!ing.name || !ing.quantity) {
+          return { error: "Each ingredient must have a name and quantity." };
+        }
+      }
+      for (const step of draftDetails.steps) {
+        if (!step.description) {
+          return { error: "Each step must have a description." };
+        }
+      }
+
+      // Apply the draft changes to the recipe
+      const updateFields: Partial<RecipeDoc> = {
+        ingredients: draftDetails.ingredients,
+        steps: draftDetails.steps,
+        updated: new Date(),
+      };
+
+      // Optionally append the AI notes to the description
+      if (draftDetails.notes) {
+        const currentDesc = existingRecipe.description || "";
+        const separator = currentDesc ? "\n\n" : "";
+        updateFields.description =
+          `${currentDesc}${separator}[AI Modification] ${draftDetails.notes}`;
+      }
+
+      const result = await this.recipes.updateOne(
+        { _id: recipe },
+        { $set: updateFields },
+      );
+
+      if (result.matchedCount === 0) {
+        return { error: "Recipe not found during update." };
+      }
+
+      return {};
+    } catch (e) {
+      console.error(
+        `Failed to apply draft to recipe ${recipe}: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      );
+      return { error: "Failed to apply draft due to a database error." };
     }
   }
 }

@@ -29,7 +29,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       console.log("\nTest: Registering a new user (Alice)");
       const result = await userConcept.registerUser({
         name: "Alice Smith",
-        email: "alice@example.com",
+        username: "alice",
         password: "password123",
       });
 
@@ -58,27 +58,27 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         "User name should match.",
       );
       assertEquals(
-        (userDetails as Array<{ user: { email: string } }>)[0].user.email,
-        "alice@example.com",
-        "User email should match.",
+        (userDetails as Array<{ user: { username: string } }>)[0].user.username,
+        "alice",
+        "User username should match.",
       );
     });
 
     await t.step(
-      "should prevent registration with an existing email",
+      "should prevent registration with an existing username",
       async () => {
-        console.log("\nTest: Attempting to register with an existing email");
+        console.log("\nTest: Attempting to register with an existing username");
         // First, register Alice
         await userConcept.registerUser({
           name: "Alice Smith",
-          email: "alice@example.com",
+          username: "alice2",
           password: "password123",
         });
 
-        // Try to register Bob with Alice's email
+        // Try to register Bob with Alice's username
         const result = await userConcept.registerUser({
           name: "Bob Johnson",
-          email: "alice@example.com",
+          username: "alice2",
           password: "securepassword",
         });
 
@@ -88,8 +88,8 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         );
         assertStringIncludes(
           (result as { error: string }).error,
-          "email already exists",
-          "Error message should indicate existing email.",
+          "username already exists",
+          "Error message should indicate existing username.",
         );
         console.log(
           `  Expected error received: ${(result as { error: string }).error}`,
@@ -102,7 +102,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
 
       const result1 = await userConcept.registerUser({
         name: "",
-        email: "test@example.com",
+        username: "testuser",
         password: "pwd",
       });
       assertExists(
@@ -117,7 +117,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
 
       const result2 = await userConcept.registerUser({
         name: "Test",
-        email: "",
+        username: "",
         password: "pwd",
       });
       assertExists(
@@ -132,7 +132,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
 
       const result3 = await userConcept.registerUser({
         name: "Test",
-        email: "test@example.com",
+        username: "testuser",
         password: "",
       });
       assertExists(
@@ -153,7 +153,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       // Register Bob first
       const registerResult = await userConcept.registerUser({
         name: "Bob Johnson",
-        email: "bob@example.com",
+        username: "bob",
         password: "securepassword",
       });
       const bobId = (registerResult as { user: ID }).user;
@@ -161,7 +161,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
 
       // Now, log in Bob
       const loginResult = await userConcept.login({
-        email: "bob@example.com",
+        username: "bob",
         password: "securepassword",
       });
 
@@ -186,13 +186,13 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       // Register Charlie
       await userConcept.registerUser({
         name: "Charlie Brown",
-        email: "charlie@example.com",
+        username: "charlie",
         password: "correctpassword",
       });
 
       // Try to log in with wrong password
       const loginResult = await userConcept.login({
-        email: "charlie@example.com",
+        username: "charlie",
         password: "wrongpassword",
       });
 
@@ -202,7 +202,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       );
       assertStringIncludes(
         (loginResult as { error: string }).error,
-        "Invalid email or password",
+        "Invalid username or password",
         "Error message should indicate invalid credentials.",
       );
       console.log(
@@ -212,11 +212,11 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       );
     });
 
-    await t.step("should prevent login for non-existent email", async () => {
-      console.log("\nTest: Attempting to log in with non-existent email");
+    await t.step("should prevent login for non-existent username", async () => {
+      console.log("\nTest: Attempting to log in with non-existent username");
 
       const loginResult = await userConcept.login({
-        email: "nonexistent@example.com",
+        username: "nonexistent",
         password: "anypassword",
       });
 
@@ -226,7 +226,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       );
       assertStringIncludes(
         (loginResult as { error: string }).error,
-        "Invalid email or password",
+        "Invalid username or password",
         "Error message should indicate invalid credentials.",
       );
       console.log(
@@ -239,7 +239,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
     await t.step("should prevent login with empty credentials", async () => {
       console.log("\nTest: Attempting to log in with empty credentials");
 
-      const result1 = await userConcept.login({ email: "", password: "pwd" });
+      const result1 = await userConcept.login({ username: "", password: "pwd" });
       assertExists(
         (result1 as { error: string }).error,
         "Error expected for empty email.",
@@ -251,7 +251,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       );
 
       const result2 = await userConcept.login({
-        email: "test@example.com",
+        username: "testuser",
         password: "",
       });
       assertExists(
@@ -274,7 +274,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         // Register Diana
         const registerResult = await userConcept.registerUser({
           name: "Diana Prince",
-          email: "diana@example.com",
+          username: "diana",
           password: "wonderwoman",
         });
         const dianaId = (registerResult as { user: ID }).user;
@@ -323,11 +323,11 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       },
     );
 
-    await t.step("should update user email successfully", async () => {
-      console.log("\nTest: Updating user email (Eve)");
+    await t.step("should update user username successfully", async () => {
+      console.log("\nTest: Updating user username (Eve)");
       const registerResult = await userConcept.registerUser({
         name: "Eve Adams",
-        email: "eve@oldmail.com",
+        username: "eve_old",
         password: "evepassword",
       });
       const eveId = (registerResult as { user: ID }).user;
@@ -335,7 +335,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
 
       const updateResult = await userConcept.updateProfile({
         user: eveId,
-        newEmail: "eve@newmail.com",
+        newUsername: "eve_new",
       });
 
       assertFalse(
@@ -346,37 +346,37 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       // Verify effects
       const updatedDetails = await userConcept._getUserDetails({ user: eveId });
       assertEquals(
-        (updatedDetails as Array<{ user: { email: string } }>)[0].user.email,
-        "eve@newmail.com",
-        "User email should be updated.",
+        (updatedDetails as Array<{ user: { username: string } }>)[0].user.username,
+        "eve_new",
+        "User username should be updated.",
       );
-      console.log(`  User '${eveId}' email updated successfully.`);
+      console.log(`  User '${eveId}' username updated successfully.`);
     });
 
     await t.step(
-      "should prevent updating email to an already taken one",
+      "should prevent updating username to an already taken one",
       async () => {
         console.log(
-          "\nTest: Attempting to update email to an already taken one",
+          "\nTest: Attempting to update username to an already taken one",
         );
         // Register two users
         const aliceResult = await userConcept.registerUser({
           name: "Alice",
-          email: "alice@test.com",
+          username: "alice_test",
           password: "pwd",
         });
         const aliceId = (aliceResult as { user: ID }).user;
 
         await userConcept.registerUser({
           name: "Bob",
-          email: "bob@test.com",
+          username: "bob_test",
           password: "pwd",
         });
 
-        // Try to change Alice's email to Bob's email
+        // Try to change Alice's username to Bob's username
         const updateResult = await userConcept.updateProfile({
           user: aliceId,
-          newEmail: "bob@test.com",
+          newUsername: "bob_test",
         });
 
         assertExists(
@@ -385,8 +385,8 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         );
         assertStringIncludes(
           (updateResult as { error: string }).error,
-          "email is already taken",
-          "Error message should indicate email is taken.",
+          "username is already taken",
+          "Error message should indicate username is taken.",
         );
         console.log(
           `  Expected error received: ${
@@ -424,7 +424,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       console.log("\nTest: Retrieving user details (Frank)");
       const registerResult = await userConcept.registerUser({
         name: "Frank",
-        email: "frank@example.com",
+        username: "frank",
         password: "frankspassword",
       });
       const frankId = (registerResult as { user: ID }).user;
@@ -445,8 +445,8 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         "Frank",
       );
       assertEquals(
-        (details as Array<{ user: { email: string } }>)[0].user.email,
-        "frank@example.com",
+        (details as Array<{ user: { username: string } }>)[0].user.username,
+        "frank",
       );
       assertObjectMatch(
         (details as Array<{ user: { preferences: Record<string, unknown> } }>)[
@@ -480,21 +480,21 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
       },
     );
 
-    await t.step("should correctly retrieve user ID by email", async () => {
-      console.log("\nTest: Retrieving user ID by email (Grace)");
+    await t.step("should correctly retrieve user ID by username", async () => {
+      console.log("\nTest: Retrieving user ID by username (Grace)");
       const registerResult = await userConcept.registerUser({
         name: "Grace",
-        email: "grace@example.com",
+        username: "grace",
         password: "gracepassword",
       });
       const graceId = (registerResult as { user: ID }).user;
 
-      const result = await userConcept._getUserIDByEmail({
-        email: "grace@example.com",
+      const result = await userConcept._getUserIDByUsername({
+        username: "grace",
       });
       assertFalse(
         (result as { error: string }).error,
-        "No error on retrieving ID by email.",
+        "No error on retrieving ID by username.",
       );
       assertExists(result, "Result should be returned.");
       assertEquals(
@@ -506,19 +506,19 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         (result as Array<{ user: ID }>)[0].user,
         graceId,
       );
-      console.log(`  Successfully retrieved ID for email 'grace@example.com'.`);
+      console.log(`  Successfully retrieved ID for username 'grace'.`);
     });
 
     await t.step(
-      "should return error for non-existent user ID by email query",
+      "should return error for non-existent user ID by username query",
       async () => {
-        console.log("\nTest: Querying ID by email for a non-existent user");
-        const result = await userConcept._getUserIDByEmail({
-          email: "unknown@example.com",
+        console.log("\nTest: Querying ID by username for a non-existent user");
+        const result = await userConcept._getUserIDByUsername({
+          username: "unknown",
         });
         assertExists(
           (result as { error: string }).error,
-          "Error expected for non-existent email.",
+          "Error expected for non-existent username.",
         );
         assertStringIncludes(
           (result as { error: string }).error,
@@ -547,7 +547,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         console.log("Step 1: Alice registers.");
         const registerResult = await userConcept.registerUser({
           name: "Alice Principle",
-          email: "alice.principle@example.com",
+          username: "alice_principle",
           password: "securepassword",
         });
         assertFalse(
@@ -561,7 +561,7 @@ Deno.test("UserConcept: Core User Lifecycle", async (t) => {
         // Alice logs in
         console.log("Step 2: Alice logs in.");
         const loginResult = await userConcept.login({
-          email: "alice.principle@example.com",
+          username: "alice_principle",
           password: "securepassword",
         });
         assertFalse(

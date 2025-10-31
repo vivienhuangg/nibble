@@ -20,8 +20,8 @@ Deno.test("RecipeConcept", async (t) => {
     { name: "Sugar", quantity: "1 cup", unit: "cup", notes: "granulated" },
   ];
   const createTestSteps = () => [
-    { description: "Mix dry ingredients thoroughly.", duration: 2 },
-    { description: "Combine with wet ingredients until smooth.", duration: 5 },
+    { description: "Mix dry ingredients thoroughly." },
+    { description: "Combine with wet ingredients until smooth." },
   ];
 
   await t.step(
@@ -1115,6 +1115,149 @@ Deno.test("RecipeConcept", async (t) => {
         "error" in searchResult3 ? searchResult3.error : "Unknown error"
       }`,
     );
+  });
+
+  await t.step("should handle recipe forking and fork counting", async () => {
+    console.log("\n--- Test: Recipe Forking and Fork Counting ---");
+
+    // Create an original recipe
+    const originalRecipeResult = await recipeConcept.createRecipe({
+      owner: testUser1,
+      title: "Original Chocolate Cake",
+      ingredients: [
+        { name: "Chocolate", quantity: "200g", unit: "g" },
+        { name: "Flour", quantity: "2 cups", unit: "cup" },
+      ],
+      steps: [
+        { description: "Mix ingredients" },
+        { description: "Bake at 350F for 30 minutes" },
+      ],
+      description: "A delicious chocolate cake recipe",
+    });
+
+    if ("error" in originalRecipeResult) {
+      throw new Error(`Failed to create original recipe: ${originalRecipeResult.error}`);
+    }
+
+    const originalRecipeId = originalRecipeResult.recipe;
+    console.log(`Original recipe created with ID: ${originalRecipeId}`);
+
+    // Test initial fork count should be 0
+    const initialForkCountResult = await recipeConcept._getForkCount({ recipe: originalRecipeId });
+    if ("error" in initialForkCountResult) {
+      throw new Error(`Failed to get initial fork count: ${initialForkCountResult.error}`);
+    }
+    assertEquals(
+      initialForkCountResult.count,
+      0,
+      "Initial fork count should be 0",
+    );
+    console.log(`Initial fork count: ${initialForkCountResult.count}`);
+
+    // Fork the recipe (User 2 forks User 1's recipe)
+    const fork1Result = await recipeConcept.createRecipe({
+      owner: testUser2,
+      title: "Bob's Chocolate Cake Variation",
+      ingredients: [
+        { name: "Dark Chocolate", quantity: "250g", unit: "g" },
+        { name: "Flour", quantity: "2 cups", unit: "cup" },
+      ],
+      steps: [
+        { description: "Mix ingredients thoroughly" },
+        { description: "Bake at 350F for 35 minutes" },
+      ],
+      description: "My variation of the chocolate cake",
+      forkedFrom: originalRecipeId,
+    });
+
+    if ("error" in fork1Result) {
+      throw new Error(`Failed to create first fork: ${fork1Result.error}`);
+    }
+    console.log(`First fork created with ID: ${fork1Result.recipe}`);
+
+    // Create another fork
+    const fork2Result = await recipeConcept.createRecipe({
+      owner: testUser2,
+      title: "Bob's Vegan Chocolate Cake",
+      ingredients: [
+        { name: "Vegan Chocolate", quantity: "200g", unit: "g" },
+        { name: "Almond Flour", quantity: "2 cups", unit: "cup" },
+      ],
+      steps: [
+        { description: "Mix vegan ingredients" },
+        { description: "Bake at 325F for 40 minutes" },
+      ],
+      description: "Vegan version of the chocolate cake",
+      forkedFrom: originalRecipeId,
+    });
+
+    if ("error" in fork2Result) {
+      throw new Error(`Failed to create second fork: ${fork2Result.error}`);
+    }
+    console.log(`Second fork created with ID: ${fork2Result.recipe}`);
+
+    // Test fork count should now be 2
+    const forkCountResult = await recipeConcept._getForkCount({ recipe: originalRecipeId });
+    if ("error" in forkCountResult) {
+      throw new Error(`Failed to get fork count: ${forkCountResult.error}`);
+    }
+    assertEquals(
+      forkCountResult.count,
+      2,
+      "Fork count should be 2 after creating two forks",
+    );
+    console.log(`Fork count after 2 forks: ${forkCountResult.count}`);
+
+    // Test listing forks
+    const forksListResult = await recipeConcept._listForksOfRecipe({ recipe: originalRecipeId });
+    if ("error" in forksListResult) {
+      throw new Error(`Failed to list forks: ${forksListResult.error}`);
+    }
+    assertEquals(
+      forksListResult.recipe.length,
+      2,
+      "Should list 2 forks",
+    );
+    console.log(`Listed ${forksListResult.recipe.length} forks successfully`);
+
+    // Test that forked recipes have the correct forkedFrom field
+    const fork1Details = forksListResult.recipe.find(r => r._id === fork1Result.recipe);
+    const fork2Details = forksListResult.recipe.find(r => r._id === fork2Result.recipe);
+    assertEquals(
+      fork1Details?.forkedFrom,
+      originalRecipeId,
+      "First fork should reference original recipe",
+    );
+    assertEquals(
+      fork2Details?.forkedFrom,
+      originalRecipeId,
+      "Second fork should reference original recipe",
+    );
+
+    // Test error case: trying to fork a non-existent recipe
+    const invalidForkResult = await recipeConcept.createRecipe({
+      owner: testUser2,
+      title: "Invalid Fork",
+      ingredients: [{ name: "Test", quantity: "1" }],
+      steps: [{ description: "Test step" }],
+      forkedFrom: "nonexistent_recipe_id" as ID,
+    });
+    assertObjectMatch(
+      invalidForkResult,
+      { error: "Parent recipe (forkedFrom) does not exist." },
+      "Should error when forking non-existent recipe",
+    );
+    console.log("Correctly rejected fork with non-existent parent recipe");
+
+    // Test error case: getting fork count for non-existent recipe
+    const invalidCountResult = await recipeConcept._getForkCount({ recipe: "nonexistent_id" as ID });
+    assertObjectMatch(
+      invalidCountResult,
+      { error: "Recipe not found." },
+      "Should error when getting fork count for non-existent recipe",
+    );
+
+    console.log("--- Recipe Forking Tests Completed Successfully ---");
   });
 
   await client.close();

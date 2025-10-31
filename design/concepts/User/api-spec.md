@@ -25,11 +25,11 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Description:** Creates a new user in the system.
 
 **Requirements:**
-- no user with the given `email` already exists.
+- no user with the given `username` already exists.
 - `name` and `password` are non-empty strings.
 
 **Effects:**
-- creates a new user, stores `name`, `email`, and `passwordHash` (plain password for this exercise);
+- creates a new user, stores `name`, `username`, and `passwordHash` (plain password for this exercise);
 - initializes `preferences` to an empty map;
 - returns the `ID` of the newly created user.
 
@@ -37,7 +37,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 ```json
 {
   "name": "string",
-  "email": "string",
+  "username": "string",
   "password": "string"
 }
 ```
@@ -60,10 +60,10 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/User/login
 
-**Description:** Authenticates a user with the provided email and password.
+**Description:** Authenticates a user with the provided username and password.
 
 **Requirements:**
-- a user with the given `email` and `password` exists.
+- a user with the given `username` and `password` exists.
 
 **Effects:**
 - returns the `ID` of the authenticated user.
@@ -71,7 +71,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 **Request Body:**
 ```json
 {
-  "email": "string",
+  "username": "string",
   "password": "string"
 }
 ```
@@ -98,10 +98,10 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 **Requirements:**
 - the `user` identified by `user: ID` must exist.
-- If `newEmail` is provided, it must be unique among other users.
+- If `newUsername` is provided, it must be unique among other users.
 
 **Effects:**
-- updates the `name`, `email`, and/or `preferences` for the specified user.
+- updates the `name`, `username`, and/or `preferences` for the specified user.
 - Returns an empty object on success.
 
 **Request Body:**
@@ -109,7 +109,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
 {
   "user": "ID",
   "newName": "string",
-  "newEmail": "string",
+  "newUsername": "string",
   "newPreferences": {
     "key": "any"
   }
@@ -132,13 +132,13 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ### POST /api/User/_getUserDetails
 
-**Description:** Returns the details (name, email, preferences) of the specified user.
+**Description:** Returns the details (name, username, preferences) of the specified user.
 
 **Requirements:**
 - a user with the given `user: ID` exists.
 
 **Effects:**
-- returns the details (name, email, preferences) of the specified user.
+- returns the details (name, username, preferences) of the specified user.
 
 **Request Body:**
 ```json
@@ -153,7 +153,7 @@ Now, analyze the following Concept Implementation and generate the API documenta
   {
     "user": {
       "name": "string",
-      "email": "string",
+      "username": "string",
       "preferences": {
         "key": "any"
       }
@@ -171,20 +171,20 @@ Now, analyze the following Concept Implementation and generate the API documenta
 
 ---
 
-### POST /api/User/_getUserIDByEmail
+### POST /api/User/_getUserIDByUsername
 
-**Description:** Returns the ID of the user with the specified email.
+**Description:** Returns the ID of the user with the specified username.
 
 **Requirements:**
-- a user with the given `email` exists.
+- a user with the given `username` exists.
 
 **Effects:**
-- returns the ID of the user with the specified email.
+- returns the ID of the user with the specified username.
 
 **Request Body:**
 ```json
 {
-  "email": "string"
+  "username": "string"
 }
 ```
 

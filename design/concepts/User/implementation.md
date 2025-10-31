@@ -31,7 +31,7 @@ const PREFIX = "User" + ".";
 interface UserDoc {
   _id: ID;
   name: string;
-  email: string;
+  username: string;
   // IMPORTANT: In a production environment, passwords should ALWAYS be hashed
   // (e.g., using bcrypt) and never stored in plain text.
   // For the purpose of this exercise, we store it as a string.
@@ -44,41 +44,41 @@ export default class UserConcept {
 
   constructor(private readonly db: Db) {
     this.users = this.db.collection(PREFIX + "users");
-    // Ensure email is indexed for uniqueness and efficient lookup
-    this.users.createIndex({ email: 1 }, { unique: true });
+    // Ensure username is indexed for uniqueness and efficient lookup
+    this.users.createIndex({ username: 1 }, { unique: true });
   }
 
   /**
-   * registerUser (name: String, email: String, password: String): (user: ID)
+   * registerUser (name: String, username: String, password: String): (user: ID)
    *
-   * @requires no user with the given `email` already exists. `name` and `password` are non-empty strings.
-   * @effects creates a new user, stores `name`, `email`, and `passwordHash` (plain password for this exercise);
+   * @requires no user with the given `username` already exists. `name` and `password` are non-empty strings.
+   * @effects creates a new user, stores `name`, `username`, and `passwordHash` (plain password for this exercise);
    *          initializes `preferences` to an empty map; returns the `ID` of the newly created user.
    */
   async registerUser({
     name,
-    email,
+    username,
     password,
   }: {
     name: string;
-    email: string;
+    username: string;
     password: string;
   }): Promise<{ user: ID } | { error: string }> {
-    if (!name || !email || !password) {
-      return { error: "Name, email, and password cannot be empty." };
+    if (!name || !username || !password) {
+      return { error: "Name, username, and password cannot be empty." };
     }
 
-    // Check if user with this email already exists
-    const existingUser = await this.users.findOne({ email });
+    // Check if user with this username already exists
+    const existingUser = await this.users.findOne({ username });
     if (existingUser) {
-      return { error: "A user with this email already exists." };
+      return { error: "A user with this username already exists." };
     }
 
     const newUserId = freshID();
     const newUser: UserDoc = {
       _id: newUserId,
       name,
-      email,
+      username,
       passwordHash: password, // Storing plain password for exercise, see security note above
       preferences: {},
     };
@@ -88,48 +88,48 @@ export default class UserConcept {
   }
 
   /**
-   * login (email: String, password: String): (user: ID)
+   * login (username: String, password: String): (user: ID)
    *
-   * @requires a user with the given `email` and `password` exists.
+   * @requires a user with the given `username` and `password` exists.
    * @effects returns the `ID` of the authenticated user.
    */
   async login({
-    email,
+    username,
     password,
-  }: {
-    email: string;
+}: {
+    username: string;
     password: string;
   }): Promise<{ user: ID } | { error: string }> {
-    if (!email || !password) {
-      return { error: "Email and password cannot be empty." };
+    if (!username || !password) {
+      return { error: "Username and password cannot be empty." };
     }
 
-    const user = await this.users.findOne({ email });
+    const user = await this.users.findOne({ username });
 
     // In a real app, 'password' would be hashed and compared securely
     if (!user || user.passwordHash !== password) {
-      return { error: "Invalid email or password." };
+      return { error: "Invalid username or password." };
     }
 
     return { user: user._id };
   }
 
   /**
-   * updateProfile (user: ID, newName?: String, newEmail?: String, newPreferences?: Map[String, Any]): Empty
+   * updateProfile (user: ID, newName?: String, newUsername?: String, newPreferences?: Map[String, Any]): Empty
    *
-   * @requires the `user` identified by `user: ID` must exist. If `newEmail` is provided, it must be unique among other users.
-   * @effects updates the `name`, `email`, and/or `preferences` for the specified user.
+   * @requires the `user` identified by `user: ID` must exist. If `newUsername` is provided, it must be unique among other users.
+   * @effects updates the `name`, `username`, and/or `preferences` for the specified user.
    *          Returns an empty object on success.
    */
   async updateProfile({
     user: userId,
     newName,
-    newEmail,
+    newUsername,
     newPreferences,
   }: {
     user: ID;
     newName?: string;
-    newEmail?: string;
+    newUsername?: string;
     newPreferences?: Record<string, unknown>;
   }): Promise<Empty | { error: string }> {
     const existingUser = await this.users.findOne({ _id: userId });
@@ -146,16 +146,16 @@ export default class UserConcept {
       updateFields.name = newName;
     }
 
-    if (newEmail !== undefined) {
-      if (typeof newEmail !== "string" || newEmail.trim() === "") {
-        return { error: "New email must be a non-empty string." };
+    if (newUsername !== undefined) {
+      if (typeof newUsername !== "string" || newUsername.trim() === "") {
+        return { error: "New username must be a non-empty string." };
       }
-      // Check if new email is already taken by another user
-      const userWithNewEmail = await this.users.findOne({ email: newEmail });
-      if (userWithNewEmail && userWithNewEmail._id !== userId) {
-        return { error: "This email is already taken by another user." };
+      // Check if new username is already taken by another user
+      const userWithNewUsername = await this.users.findOne({ username: newUsername });
+      if (userWithNewUsername && userWithNewUsername._id !== userId) {
+        return { error: "This username is already taken by another user." };
       }
-      updateFields.email = newEmail;
+      updateFields.username = newUsername;
     }
 
     if (newPreferences !== undefined) {
@@ -174,42 +174,42 @@ export default class UserConcept {
 
   // --- Queries (not explicitly required by the problem statement for User, but good practice) ---
   /**
-   * _getUserDetails (user: ID): (user: { name: String, email: String, preferences: Map[String, Any] })
+   * _getUserDetails (user: ID): (user: { name: String, username: String, preferences: Map[String, Any] })
    *
    * @requires a user with the given `user: ID` exists.
-   * @effects returns the details (name, email, preferences) of the specified user.
+   * @effects returns the details (name, username, preferences) of the specified user.
    */
   async _getUserDetails({ user: userId }: {
     user: ID;
   }): Promise<
     Array<{
-      user: { name: string; email: string; preferences: Record<string, unknown> };
+      user: { name: string; username: string; preferences: Record<string, unknown> };
     }> | { error: string }
   > {
     const user = await this.users.findOne(
       { _id: userId },
-      { projection: { name: 1, email: 1, preferences: 1, _id: 0 } }, // Exclude _id and password
+      { projection: { name: 1, username: 1, preferences: 1, _id: 0 } }, // Exclude _id and password
     );
 
     if (!user) {
       return { error: "User not found." };
     }
 
-    return [{ user: { name: user.name, email: user.email, preferences: user.preferences } }];
+    return [{ user: { name: user.name, username: user.username, preferences: user.preferences } }];
   }
 
   /**
-   * _getUserIDByEmail (email: String): (user: ID)
+   * _getUserIDByUsername (username: String): (user: ID)
    *
-   * @requires a user with the given `email` exists.
-   * @effects returns the ID of the user with the specified email.
+   * @requires a user with the given `username` exists.
+   * @effects returns the ID of the user with the specified username.
    */
-  async _getUserIDByEmail({ email }: { email: string }): Promise<Array<{ user: ID }> | { error: string }> {
-    if (!email) {
-      return { error: "Email cannot be empty." };
+  async _getUserIDByUsername({ username }: { username: string }): Promise<Array<{ user: ID }> | { error: string }> {
+    if (!username) {
+      return { error: "Username cannot be empty." };
     }
 
-    const user = await this.users.findOne({ email }, { projection: { _id: 1 } });
+    const user = await this.users.findOne({ username }, { projection: { _id: 1 } });
     if (!user) {
       return { error: "User not found." };
     }

@@ -12,27 +12,27 @@
 ```bash
 # Register new user
 POST /api/User/registerUser
-{ "name": "string", "email": "string", "password": "string" }
+{ "name": "string", "username": "string", "password": "string" }
 → { "user": "ID" }
 
 # Login
 POST /api/User/login
-{ "email": "string", "password": "string" }
+{ "username": "string", "password": "string" }
 → { "user": "ID" }
 
 # Update profile
 POST /api/User/updateProfile
-{ "user": "ID", "newName": "string", "newEmail": "string", "newPreferences": {} }
+{ "user": "ID", "newName": "string", "newUsername": "string", "newPreferences": {} }
 → {}
 
 # Get user details
 POST /api/User/_getUserDetails
 { "user": "ID" }
-→ [{ "user": { "name": "string", "email": "string", "preferences": {} } }]
+→ [{ "user": { "name": "string", "username": "string", "preferences": {} } }]
 
-# Get user ID by email
-POST /api/User/_getUserIDByEmail
-{ "email": "string" }
+# Get user ID by username
+POST /api/User/_getUserIDByUsername
+{ "username": "string" }
 → [{ "user": "ID" }]
 ```
 
@@ -41,14 +41,15 @@ POST /api/User/_getUserIDByEmail
 ## 🍳 Recipe
 
 ```bash
-# Create recipe
+# Create recipe (optionally fork from another)
 POST /api/Recipe/createRecipe
 {
   "owner": "ID",
   "title": "string",
   "ingredients": [{ "name": "string", "quantity": "string" }],
   "steps": [{ "description": "string" }],
-  "description": "string"
+  "description": "string",
+  "forkedFrom": "ID (optional)"
 }
 → { "recipe": "ID" }
 
@@ -93,104 +94,25 @@ POST /api/Recipe/_listRecipesByOwner
 POST /api/Recipe/_searchRecipesByTag
 { "tag": "string" }
 → [{ "recipe": { ...recipeData } }, ...]
-```
 
----
+# Get fork count
+POST /api/Recipe/_getForkCount
+{ "recipe": "ID" }
+→ { "count": number }
 
-## 📝 Version
+# List forks of a recipe
+POST /api/Recipe/_listForksOfRecipe
+{ "recipe": "ID" }
+→ [{ "recipe": { ...recipeData } }, ...]
 
-```bash
-# Create version
-POST /api/Version/createVersion
-{
-  "author": "string",
-  "recipe": "string",
-  "versionNum": "string",
-  "notes": "string",
-  "ingredients": [...],
-  "steps": [...],
-  "promptHistory": []
-}
-→ { "version": "string" }
+# 🤖 AI: Draft recipe modifications
+POST /api/Recipe/draftRecipeWithAI
+{ "author": "ID", "recipe": "ID", "goal": "string" }
+→ { "draftId": "ID", "ingredients": [...], "steps": [...], "notes": "string", "confidence": 0.85, ... }
 
-# Draft version with AI
-POST /api/Version/draftVersionWithAI
-{ "author": "string", "recipe": "string", "goal": "string", "options": {} }
-→ { "draftId": "string", "baseRecipe": "string", ... }
-
-# Approve draft
-POST /api/Version/approveDraft
-{
-  "author": "string",
-  "draftId": "string",
-  "baseRecipe": "string",
-  "newVersionNum": "string",
-  "draftDetails": { ... }
-}
-→ { "newVersionId": "string", ... }
-
-# Reject draft
-POST /api/Version/rejectDraft
-{ "author": "string", "draftId": "string", "baseRecipe": "string", "goal": "string" }
-→ { "draftToDeleteId": "string", ... }
-
-# Delete version
-POST /api/Version/deleteVersion
-{ "requester": "string", "version": "string" }
-→ {}
-
-# Get version by ID
-POST /api/Version/_getVersionById
-{ "version": "string" }
-→ [{ "id": "string", "baseRecipe": "string", ... }]
-
-# List versions by recipe
-POST /api/Version/_listVersionsByRecipe
-{ "recipe": "string" }
-→ [{ "id": "string", ... }, ...]
-
-# List versions by author
-POST /api/Version/_listVersionsByAuthor
-{ "author": "string" }
-→ [{ "id": "string", ... }, ...]
-```
-
----
-
-## 📋 VersionDraft
-
-```bash
-# Create draft
-POST /api/VersionDraft/createDraft
-{
-  "requester": "string",
-  "baseRecipe": "string",
-  "goal": "string",
-  "ingredients": [...],
-  "steps": [...],
-  "notes": "string",
-  "confidence": 0.0
-}
-→ { "id": "string" }
-
-# Delete draft
-POST /api/VersionDraft/deleteDraft
-{ "id": "string" }
-→ {}
-
-# Get draft by ID
-POST /api/VersionDraft/_getDraftById
-{ "id": "string" }
-→ [{ "_id": "string", "requester": "string", ... }]
-
-# List drafts by requester
-POST /api/VersionDraft/_listDraftsByRequester
-{ "requester": "string" }
-→ [{ "_id": "string", ... }, ...]
-
-# Cleanup expired drafts
-POST /api/VersionDraft/_cleanupExpiredDrafts
-{}
+# 🤖 AI: Apply approved draft to recipe
+POST /api/Recipe/applyDraft
+{ "owner": "ID", "recipe": "ID", "draftDetails": { "ingredients": [...], "steps": [...], "notes": "string" } }
 → {}
 ```
 

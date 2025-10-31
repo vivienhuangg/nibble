@@ -29,6 +29,9 @@ async function main() {
   // --- Dynamic Concept Loading and Routing ---
   console.log(`Scanning for concepts in ./${CONCEPTS_DIR}...`);
 
+  // Store concept instances for dependency injection
+  const conceptInstances = new Map<string, any>();
+
   for await (
     const entry of walk(CONCEPTS_DIR, {
       maxDepth: 1,
@@ -57,6 +60,8 @@ async function main() {
       }
 
       const instance = new ConceptClass(db);
+      conceptInstances.set(conceptName, instance);
+
       const conceptApiName = conceptName;
       console.log(
         `- Registering concept: ${conceptName} at ${BASE_URL}/${conceptApiName}`,
@@ -89,6 +94,8 @@ async function main() {
       console.error(`! Error loading concept from ${conceptFilePath}:`, e);
     }
   }
+
+  // No dependency injection needed anymore - Recipe concept is self-contained
 
   console.log(`\nServer listening on http://localhost:${PORT}`);
   Deno.serve({ port: PORT }, app.fetch);

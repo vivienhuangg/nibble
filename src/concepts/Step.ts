@@ -48,13 +48,6 @@ export interface Step {
   description: string;
 
   /**
-   * duration : Optional[Integer] (in minutes)
-   * The estimated duration for this step in minutes.
-   * Represented as an optional number, meaning it can be `undefined`.
-   */
-  duration?: number;
-
-  /**
    * notes : Optional[String] (e.g., "stir until golden brown")
    * Additional notes or tips for the step.
    * Represented as an optional string, meaning it can be `undefined`.

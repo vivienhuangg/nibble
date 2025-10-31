@@ -10,11 +10,9 @@
 
 1. [User Concept](#user-concept)
 2. [Recipe Concept](#recipe-concept)
-3. [Version Concept](#version-concept)
-4. [VersionDraft Concept](#versiondraft-concept)
-5. [Annotation Concept](#annotation-concept)
-6. [Notebook Concept](#notebook-concept)
-7. [Step Concept](#step-concept)
+3. [Annotation Concept](#annotation-concept)
+4. [Notebook Concept](#notebook-concept)
+5. [Step Concept](#step-concept)
 
 ---
 
@@ -28,12 +26,12 @@
 
 **Requirements:**
 
-- no user with the given `email` already exists.
+- no user with the given `username` already exists.
 - `name` and `password` are non-empty strings.
 
 **Effects:**
 
-- creates a new user, stores `name`, `email`, and `passwordHash` (plain password for this exercise);
+- creates a new user, stores `name`, `username`, and `passwordHash` (plain password for this exercise);
 - initializes `preferences` to an empty map;
 - returns the `ID` of the newly created user.
 
@@ -42,7 +40,7 @@
 ```json
 {
   "name": "string",
-  "email": "string",
+  "username": "string",
   "password": "string"
 }
 ```
@@ -67,11 +65,11 @@
 
 ### POST /api/User/login
 
-**Description:** Authenticates a user with the provided email and password.
+**Description:** Authenticates a user with the provided username and password.
 
 **Requirements:**
 
-- a user with the given `email` and `password` exists.
+- a user with the given `username` and `password` exists.
 
 **Effects:**
 
@@ -81,7 +79,7 @@
 
 ```json
 {
-  "email": "string",
+  "username": "string",
   "password": "string"
 }
 ```
@@ -111,11 +109,11 @@
 **Requirements:**
 
 - the `user` identified by `user: ID` must exist.
-- If `newEmail` is provided, it must be unique among other users.
+- If `newUsername` is provided, it must be unique among other users.
 
 **Effects:**
 
-- updates the `name`, `email`, and/or `preferences` for the specified user.
+- updates the `name`, `username`, and/or `preferences` for the specified user.
 - Returns an empty object on success.
 
 **Request Body:**
@@ -124,7 +122,7 @@
 {
   "user": "ID",
   "newName": "string",
-  "newEmail": "string",
+  "newUsername": "string",
   "newPreferences": {
     "key": "any"
   }
@@ -149,7 +147,7 @@
 
 ### POST /api/User/\_getUserDetails
 
-**Description:** Returns the details (name, email, preferences) of the specified user.
+**Description:** Returns the details (name, username, preferences) of the specified user.
 
 **Requirements:**
 
@@ -157,7 +155,7 @@
 
 **Effects:**
 
-- returns the details (name, email, preferences) of the specified user.
+- returns the details (name, username, preferences) of the specified user.
 
 **Request Body:**
 
@@ -174,7 +172,7 @@
   {
     "user": {
       "name": "string",
-      "email": "string",
+      "username": "string",
       "preferences": {
         "key": "any"
       }
@@ -193,23 +191,23 @@
 
 ---
 
-### POST /api/User/\_getUserIDByEmail
+### POST /api/User/\_getUserIDByUsername
 
-**Description:** Returns the ID of the user with the specified email.
+**Description:** Returns the ID of the user with the specified username.
 
 **Requirements:**
 
-- a user with the given `email` exists.
+- a user with the given `username` exists.
 
 **Effects:**
 
-- returns the ID of the user with the specified email.
+- returns the ID of the user with the specified username.
 
 **Request Body:**
 
 ```json
 {
-  "email": "string"
+  "username": "string"
 }
 ```
 
@@ -239,15 +237,15 @@
 
 ### POST /api/Recipe/createRecipe
 
-**Description:** Adds a new recipe with an empty tag set, sets creation and update times, and returns the new recipe's ID.
+**Description:** Adds a new recipe with an empty tag set, sets creation and update times, and returns the new recipe's ID. Optionally tracks the parent recipe if this recipe is forked from another.
 
 **Requirements:**
 
-- owner exists; title ≠ ""; ingredients and steps well-formed
+- owner exists; title ≠ ""; ingredients and steps well-formed; if forkedFrom is provided, that recipe must exist
 
 **Effects:**
 
-- adds new recipe with empty tag set, sets creation/update times; returns the new recipe's ID
+- adds new recipe with empty tag set, sets creation/update times; optionally tracks the parent recipe if forkedFrom is provided; returns the new recipe's ID
 
 **Request Body:**
 
@@ -266,11 +264,11 @@
   "steps": [
     {
       "description": "string",
-      "duration": "number (optional)",
       "notes": "string (optional)"
     }
   ],
-  "description": "string (optional)"
+  "description": "string (optional)",
+  "forkedFrom": "ID (optional)"
 }
 ```
 
@@ -434,7 +432,6 @@
   "newSteps": [
     {
       "description": "string",
-      "duration": "number (optional)",
       "notes": "string (optional)"
     }
   ]
@@ -498,11 +495,11 @@
       "steps": [
         {
           "description": "string",
-          "duration": "number (optional)",
           "notes": "string (optional)"
         }
       ],
       "tags": ["string"],
+      "forkedFrom": "ID (optional)",
       "created": "Date (ISO 8601 string)",
       "updated": "Date (ISO 8601 string)"
     }
@@ -561,11 +558,11 @@
       "steps": [
         {
           "description": "string",
-          "duration": "number (optional)",
           "notes": "string (optional)"
         }
       ],
       "tags": ["string"],
+      "forkedFrom": "ID (optional)",
       "created": "Date (ISO 8601 string)",
       "updated": "Date (ISO 8601 string)"
     }
@@ -624,7 +621,6 @@
       "steps": [
         {
           "description": "string",
-          "duration": "number (optional)",
           "notes": "string (optional)"
         }
       ],
@@ -646,65 +642,31 @@
 
 ---
 
-## Version Concept
+### POST /api/Recipe/\_getForkCount
 
-**Purpose:** capture concrete modifications to a recipe as immutable snapshots — with optional AI assistance that can propose draft versions from natural-language goals.
-
-### POST /api/Version/createVersion
-
-**Description:** Creates a new immutable version of a recipe.
+**Description:** Returns the count of recipes that have been forked from the specified recipe.
 
 **Requirements:**
 
 - recipe exists
-- versionNum unique for recipe (e.g., "1.0", "1.1", "2.0")
-- ingredients/steps must be well-formed.
 
 **Effects:**
 
-- adds new version linked to recipe, sets `created`
-- returns the ID of the new version.
+- returns the count of recipes that have been forked from the specified recipe
 
 **Request Body:**
 
 ```json
 {
-  "author": "string",
-  "recipe": "string",
-  "versionNum": "string",
-  "notes": "string",
-  "ingredients": [
-    {
-      "name": "string",
-      "quantity": "string",
-      "unit": "string",
-      "notes": "string"
-    }
-  ],
-  "steps": [
-    {
-      "description": "string",
-      "duration": "number",
-      "notes": "string"
-    }
-  ],
-  "promptHistory": [
-    {
-      "promptText": "string",
-      "modelName": "string",
-      "timestamp": "string (ISO 8601)",
-      "draftId": "string",
-      "status": "Approved | Rejected | Generated | Failed"
-    }
-  ]
+  "recipe": "ID"
 }
 ```
 
-**Success Response Body (Action):**
+**Success Response Body (Query):**
 
 ```json
 {
-  "version": "string"
+  "count": "number"
 }
 ```
 
@@ -718,31 +680,57 @@
 
 ---
 
-### POST /api/Version/deleteVersion
+### POST /api/Recipe/\_listForksOfRecipe
 
-**Description:** Deletes a specific recipe version.
+**Description:** Returns all recipes that have been forked from the specified recipe.
 
 **Requirements:**
 
-- requester = version.author OR requester = recipe.owner (the latter check is typically handled by sync with Recipe concept).
+- recipe exists
 
 **Effects:**
 
-- removes version.
+- returns all recipes that have been forked from the specified recipe
 
 **Request Body:**
 
 ```json
 {
-  "requester": "string",
-  "version": "string"
+  "recipe": "ID"
 }
 ```
 
-**Success Response Body (Action):**
+**Success Response Body (Query):**
 
 ```json
-{}
+[
+  {
+    "recipe": {
+      "_id": "ID",
+      "owner": "ID",
+      "title": "string",
+      "description": "string (optional)",
+      "ingredients": [
+        {
+          "name": "string",
+          "quantity": "string",
+          "unit": "string (optional)",
+          "notes": "string (optional)"
+        }
+      ],
+      "steps": [
+        {
+          "description": "string",
+          "notes": "string (optional)"
+        }
+      ],
+      "tags": ["string"],
+      "forkedFrom": "ID (optional)",
+      "created": "Date (ISO 8601 string)",
+      "updated": "Date (ISO 8601 string)"
+    }
+  }
+]
 ```
 
 **Error Response Body:**
@@ -755,60 +743,58 @@
 
 ---
 
-### POST /api/Version/draftVersionWithAI
+### POST /api/Recipe/draftRecipeWithAI
 
-**Description:** Initiates an AI-driven process to suggest modifications to a recipe, outputting data to create a transient draft.
+**Description:** Uses AI to suggest modifications to a recipe based on a user's goal. Creates a temporary draft for review.
 
 **Requirements:**
 
 - recipe exists
-- goal ≠ ""
-- (LLM service available externally).
+- goal is non-empty
+- GEMINI_API_KEY environment variable is set
 
 **Effects:**
 
-- Simulates an LLM call to get proposed changes
-- outputs all data necessary for a sync to create a `VersionDraft`.
-- Does not directly modify `Version` concept state, as `promptHistory` is populated when a draft is approved into a concrete version.
+- Calls Gemini AI with the recipe data and goal
+- Returns draft data including AI-suggested ingredients, steps, notes, and confidence score
+- Draft expires after 24 hours
 
 **Request Body:**
 
 ```json
 {
-  "author": "string",
-  "recipe": "string",
-  "goal": "string",
-  "options": {}
+  "author": "ID",
+  "recipe": "ID",
+  "goal": "string"
 }
 ```
 
-**Success Response Body (Action):**
+**Success Response Body:**
 
 ```json
 {
-  "draftId": "string",
-  "baseRecipe": "string",
-  "requester": "string",
+  "draftId": "ID",
+  "baseRecipe": "ID",
+  "requester": "ID",
   "goal": "string",
   "ingredients": [
     {
       "name": "string",
       "quantity": "string",
-      "unit": "string",
-      "notes": "string"
+      "unit": "string (optional)",
+      "notes": "string (optional)"
     }
   ],
   "steps": [
     {
       "description": "string",
-      "duration": "number",
-      "notes": "string"
+      "notes": "string (optional)"
     }
   ],
   "notes": "string",
-  "confidence": "number",
-  "created": "string (ISO 8601)",
-  "expires": "string (ISO 8601)"
+  "confidence": "number (0.0-1.0)",
+  "created": "Date (ISO 8601 string)",
+  "expires": "Date (ISO 8601 string)"
 }
 ```
 
@@ -822,596 +808,45 @@
 
 ---
 
-### POST /api/Version/approveDraft
+### POST /api/Recipe/applyDraft
 
-**Description:** Approves a specific AI-generated draft, initiating its promotion to an official immutable version and the deletion of the transient draft.
+**Description:** Applies an approved AI draft to the original recipe, modifying it directly.
 
 **Requirements:**
 
-- draft exists (implicitly, as `draftId` and `draftDetails` are passed)
-- author is the requester of the draft (implicitly handled by sync/client)
-- newVersionNum unique for recipe.
+- owner must be the recipe owner
+- draft details must be well-formed (valid ingredients and steps)
 
 **Effects:**
 
-- Outputs data to trigger: 1) creation of a new `Version` (including the approved `promptHistoryEntry`), and 2) deletion of the `VersionDraft`.
-- This action does not directly modify `Version` concept state, but prepares the data for a new `Version` record to be created via sync.
+- Updates the recipe's ingredients and steps with the draft content
+- Appends AI modification notes to the recipe description
+- Updates the recipe's timestamp
 
 **Request Body:**
 
 ```json
 {
-  "author": "string",
-  "draftId": "string",
-  "baseRecipe": "string",
-  "newVersionNum": "string",
+  "owner": "ID",
+  "recipe": "ID",
   "draftDetails": {
     "ingredients": [
       {
         "name": "string",
         "quantity": "string",
-        "unit": "string",
-        "notes": "string"
+        "unit": "string (optional)",
+        "notes": "string (optional)"
       }
     ],
     "steps": [
       {
         "description": "string",
-        "duration": "number",
-        "notes": "string"
+        "notes": "string (optional)"
       }
     ],
-    "notes": "string",
-    "goal": "string",
-    "confidence": "number"
+    "notes": "string"
   }
 }
-```
-
-**Success Response Body (Action):**
-
-```json
-{
-  "newVersionId": "string",
-  "author": "string",
-  "recipe": "string",
-  "versionNum": "string",
-  "notes": "string",
-  "ingredients": [
-    {
-      "name": "string",
-      "quantity": "string",
-      "unit": "string",
-      "notes": "string"
-    }
-  ],
-  "steps": [
-    {
-      "description": "string",
-      "duration": "number",
-      "notes": "string"
-    }
-  ],
-  "draftToDeleteId": "string",
-  "promptHistoryEntry": {
-    "promptText": "string",
-    "modelName": "string",
-    "timestamp": "string (ISO 8601)",
-    "draftId": "string",
-    "status": "Approved | Rejected | Generated | Failed"
-  }
-}
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/Version/rejectDraft
-
-**Description:** Rejects a specific AI-generated draft, initiating its removal from transient drafts.
-
-**Requirements:**
-
-- draft exists (implicitly via `draftId`)
-- author is the requester of the draft (implicitly handled by sync/client).
-
-**Effects:**
-
-- Outputs data to trigger deletion of the `VersionDraft`.
-- Also outputs a `promptHistoryEntry` with "Rejected" status.
-- This `promptHistoryEntry` is not stored within the `Version` concept itself by this action, as no `VersionDoc` is created from a rejected draft.
-
-**Request Body:**
-
-```json
-{
-  "author": "string",
-  "draftId": "string",
-  "baseRecipe": "string",
-  "goal": "string"
-}
-```
-
-**Success Response Body (Action):**
-
-```json
-{
-  "draftToDeleteId": "string",
-  "promptHistoryEntry": {
-    "promptText": "string",
-    "modelName": "string",
-    "timestamp": "string (ISO 8601)",
-    "draftId": "string",
-    "status": "Approved | Rejected | Generated | Failed"
-  }
-}
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/Version/\_getVersionById
-
-**Description:** Retrieves a specific recipe version by its ID.
-
-**Requirements:**
-
-- The version ID exists.
-
-**Effects:**
-
-- Returns an array containing the Version document if found, otherwise an empty array or an error.
-
-**Request Body:**
-
-```json
-{
-  "version": "string"
-}
-```
-
-**Success Response Body (Query):**
-
-```json
-[
-  {
-    "id": "string",
-    "baseRecipe": "string",
-    "versionNum": "string",
-    "author": "string",
-    "notes": "string",
-    "ingredients": [
-      {
-        "name": "string",
-        "quantity": "string",
-        "unit": "string",
-        "notes": "string"
-      }
-    ],
-    "steps": [
-      {
-        "description": "string",
-        "duration": "number",
-        "notes": "string"
-      }
-    ],
-    "created": "string (ISO 8601)",
-    "promptHistory": [
-      {
-        "promptText": "string",
-        "modelName": "string",
-        "timestamp": "string (ISO 8601)",
-        "draftId": "string",
-        "status": "Approved | Rejected | Generated | Failed"
-      }
-    ]
-  }
-]
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/Version/\_listVersionsByRecipe
-
-**Description:** Lists all versions associated with a specific base recipe.
-
-**Requirements:**
-
-- The recipe ID exists.
-
-**Effects:**
-
-- Returns an array of Version documents for the given recipe, ordered by creation time.
-
-**Request Body:**
-
-```json
-{
-  "recipe": "string"
-}
-```
-
-**Success Response Body (Query):**
-
-```json
-[
-  {
-    "id": "string",
-    "baseRecipe": "string",
-    "versionNum": "string",
-    "author": "string",
-    "notes": "string",
-    "ingredients": [
-      {
-        "name": "string",
-        "quantity": "string",
-        "unit": "string",
-        "notes": "string"
-      }
-    ],
-    "steps": [
-      {
-        "description": "string",
-        "duration": "number",
-        "notes": "string"
-      }
-    ],
-    "created": "string (ISO 8601)",
-    "promptHistory": [
-      {
-        "promptText": "string",
-        "modelName": "string",
-        "timestamp": "string (ISO 8601)",
-        "draftId": "string",
-        "status": "Approved | Rejected | Generated | Failed"
-      }
-    ]
-  }
-]
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/Version/\_listVersionsByAuthor
-
-**Description:** Lists all versions authored by a specific user.
-
-**Requirements:**
-
-- The author ID exists.
-
-**Effects:**
-
-- Returns an array of Version documents authored by the given user.
-
-**Request Body:**
-
-```json
-{
-  "author": "string"
-}
-```
-
-**Success Response Body (Query):**
-
-```json
-[
-  {
-    "id": "string",
-    "baseRecipe": "string",
-    "versionNum": "string",
-    "author": "string",
-    "notes": "string",
-    "ingredients": [
-      {
-        "name": "string",
-        "quantity": "string",
-        "unit": "string",
-        "notes": "string"
-      }
-    ],
-    "steps": [
-      {
-        "description": "string",
-        "duration": "number",
-        "notes": "string"
-      }
-    ],
-    "created": "string (ISO 8601)",
-    "promptHistory": [
-      {
-        "promptText": "string",
-        "modelName": "string",
-        "timestamp": "string (ISO 8601)",
-        "draftId": "string",
-        "status": "Approved | Rejected | Generated | Failed"
-      }
-    ]
-  }
-]
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-## VersionDraft Concept
-
-**Purpose:** represent a temporary, AI-generated suggestion for a recipe modification, awaiting user review.
-
-### POST /api/VersionDraft/createDraft
-
-**Description:** Creates a new transient AI-generated version draft.
-
-**Requirements:**
-
-- baseRecipe exists
-- goal is not empty
-- ingredients and steps are well-formed.
-
-**Effects:**
-
-- A new VersionDraft document is created with a fresh ID, associated with the requester, baseRecipe, and AI-generated content.
-- `created` and `expires` timestamps are set.
-- Returns the ID of the new draft.
-
-**Request Body:**
-
-```json
-{
-  "requester": "string",
-  "baseRecipe": "string",
-  "goal": "string",
-  "ingredients": [
-    {
-      "name": "string",
-      "quantity": "string",
-      "unit": "string",
-      "notes": "string"
-    }
-  ],
-  "steps": [
-    {
-      "description": "string",
-      "duration": 0,
-      "notes": "string"
-    }
-  ],
-  "notes": "string",
-  "confidence": 0.0
-}
-```
-
-**Success Response Body (Action):**
-
-```json
-{
-  "id": "string"
-}
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/VersionDraft/deleteDraft
-
-**Description:** Removes a transient AI-generated version draft.
-
-**Requirements:**
-
-- A VersionDraft with the given `id` exists.
-
-**Effects:**
-
-- The VersionDraft document with the specified `id` is removed from the system.
-
-**Request Body:**
-
-```json
-{
-  "id": "string"
-}
-```
-
-**Success Response Body (Action):**
-
-```json
-{}
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/VersionDraft/\_getDraftById
-
-**Description:** Retrieves a specific version draft by its ID.
-
-**Requirements:**
-
-- A VersionDraft with the given `id` exists.
-
-**Effects:**
-
-- Returns an array containing the VersionDraft document if found, otherwise an empty array or an error.
-
-**Request Body:**
-
-```json
-{
-  "id": "string"
-}
-```
-
-**Success Response Body (Query):**
-
-```json
-[
-  {
-    "_id": "string",
-    "requester": "string",
-    "baseRecipe": "string",
-    "goal": "string",
-    "ingredients": [
-      {
-        "name": "string",
-        "quantity": "string",
-        "unit": "string",
-        "notes": "string"
-      }
-    ],
-    "steps": [
-      {
-        "description": "string",
-        "duration": 0,
-        "notes": "string"
-      }
-    ],
-    "notes": "string",
-    "confidence": 0.0,
-    "created": "YYYY-MM-DDTHH:MM:SS.sssZ",
-    "expires": "YYYY-MM-DDTHH:MM:SS.sssZ"
-  }
-]
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/VersionDraft/\_listDraftsByRequester
-
-**Description:** Lists all version drafts requested by a specific user.
-
-**Requirements:**
-
-- The requester ID is valid.
-
-**Effects:**
-
-- Returns an array of VersionDraft documents associated with the requester, or an empty array.
-
-**Request Body:**
-
-```json
-{
-  "requester": "string"
-}
-```
-
-**Success Response Body (Query):**
-
-```json
-[
-  {
-    "_id": "string",
-    "requester": "string",
-    "baseRecipe": "string",
-    "goal": "string",
-    "ingredients": [
-      {
-        "name": "string",
-        "quantity": "string",
-        "unit": "string",
-        "notes": "string"
-      }
-    ],
-    "steps": [
-      {
-        "description": "string",
-        "duration": 0,
-        "notes": "string"
-      }
-    ],
-    "notes": "string",
-    "confidence": 0.0,
-    "created": "YYYY-MM-DDTHH:MM:SS.sssZ",
-    "expires": "YYYY-MM-DDTHH:MM:SS.sssZ"
-  }
-]
-```
-
-**Error Response Body:**
-
-```json
-{
-  "error": "string"
-}
-```
-
----
-
-### POST /api/VersionDraft/\_cleanupExpiredDrafts
-
-**Description:** Automatically removes version drafts that have passed their expiry time. (System Action)
-
-**Requirements:**
-
-- The current time is after a draft's `expires` timestamp.
-
-**Effects:**
-
-- All expired VersionDraft documents are removed from the system.
-
-**Request Body:**
-
-```json
-{}
 ```
 
 **Success Response Body (Action):**

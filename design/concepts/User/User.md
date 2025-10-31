@@ -7,11 +7,11 @@
 
 *   id : UUID
 *   name : String
-*   email : String
+*   username : String
 *   preferences : Map\[String, Any]
 
 **actions**
 
-*   `registerUser(name, email, password) → user`
-*   `login(email, password) → user`
-*   `updateProfile(user, newName, newEmail, newPreferences)`
+*   `registerUser(name, username, password) → user`
+*   `login(username, password) → user`
+*   `updateProfile(user, newName, newUsername, newPreferences)`
