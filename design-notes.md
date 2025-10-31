@@ -1,26 +1,286 @@
+# Nibble Backend - Design Documentation
 
-## overall changes to application
-![@all-design-changes][all-design-changes](design/brainstorming/all-design-changes.md)
+## Project Overview
 
-## interesting moments
+Nibble is a collaborative recipe management platform that allows users to create, share, annotate, and modify recipes. The backend implements a concept-based architecture with six core concepts working together to provide rich recipe management functionality.
 
-1. **Generating overall changes to applications**: I considered at first to give each concept's design changes to Context and ask it to generate a description of overall app changes. However, the LLM responded with only VersionDraftConcept's changes. I think the LLM may have gotten "confused" as I was sending its generated descriptions as context. So, I gave Context the concept .ts files instead, and it worked! 
-	1. Link to first response (.md files): [response.202f40c4](context/Users/vivienhuang/6.1040/nibble/design/brainstorming/all%20design%20changes.md/steps/response.202f40c4.md)
-	2. Link to second response (.ts files): [response.e89fdc9d](context/design/brainstorming/all-design-changes.md/steps/response.e89fdc9d.md)
-2. **Debugging resource leaks**: For Version and VersionDraft, I faced difficulty with TLS resource leaks. I asked both Context and Cursor, both of whom couldn't figure it out. Frustrated, I completely redid the Version and VersionDraft implementations and test cases -- to no avail. One Google search solved everything. At this point I realized that my dependency on AI recently led me to believe that it is always superior to Googling/web-searching. 
-	1. [response.6c5db0c9](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.6c5db0c9.md)
-	2. [response.06d5e2f0](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.06d5e2f0.md)
-	3. [response.6d76b65d](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.6d76b65d.md)
-	4. [response.8e4a8a75](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.8e4a8a75.md)
-	5. [response.81d1a292](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.81d1a292.md)
-	6. [response.0539c6d5](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.0539c6d5.md)
-	7. [response.f17842a6](context/Users/vivienhuang/6.1040/nibble/design/concepts/Version/debugging.md/steps/response.f17842a6.md)
-3. **Common linting errors**: For all test case generations, there were many type checking failures. One example is the "catch(e)" type error. I thought it was interesting how this was a consistent issue -- a .md file of common deno linting errors would be helpful.
-	1. [response.7fe473a0](context/Users/vivienhuang/6.1040/nibble/design/concepts/Annotation/testing.md/steps/response.7fe473a0.md)
-4. **Response tone/style**: I tried many different prompt + context combinations to make the responses to design-updates shorter and more concise, adding keywords like "only," "contrasting,", "major," "brief,", "bullet-pointed." I also added the rubric for the assignment, hoping that the LLM would "notice" that verbosity was punished. However, the response never shortened. I can't really find a file for it, but I notice that the background documents for concept implementation and testing generally encourage verbosity and details -- this might be why my prompt engineering didn't really make a difference. 
-	1. [prompt.74dc1e84](context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/steps/prompt.74dc1e84.md)
-	2. [prompt.695a36e2](context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/steps/prompt.695a36e2.md)
-	3. [prompt.f8c2d160](context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/steps/prompt.f8c2d160.md)
-	4. [prompt.f63189e7](context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/steps/prompt.f63189e7.md)
-	5. [prompt.fff55a91](context/Users/vivienhuang/6.1040/nibble/design/concepts/Ingredient/design-updates.md/steps/prompt.fff55a91.md)
-I didn't notice any other super interesting moments besides the above unfortunately!
+---
+
+## Major Design Changes Summary
+
+### 1. Removal of Version and VersionDraft Concepts
+
+**What Changed:**
+
+- Completely removed the `Version` and `VersionDraft` concepts from the application
+- Deleted approximately 2,170 lines of code across implementation and test files
+
+**Original Design:**
+
+- `Version` concept: Created immutable snapshots of recipe adaptations with AI-assisted versioning
+- `VersionDraft` concept: Managed transient AI-generated recipe suggestions before user approval
+- These concepts included sophisticated features like:
+  - `promptHistory` tracking AI interaction lineage
+  - AI-generated recipe modifications via `draftVersionWithAI()`
+  - Approval/rejection workflow with `approveDraft()` and `rejectDraft()`
+  - Automatic expiration of drafts after 24 hours
+
+**Why Changed:**
+The Version/VersionDraft concepts added significant complexity for a feature that was not essential to the core MVP. For frontend integration, the simpler fork-based recipe modification workflow proved more practical and user-friendly.
+
+---
+
+### 2. Integration of AI Features Directly into Recipe Concept
+
+**What Changed:**
+
+- Moved AI recipe modification capabilities directly into `RecipeConcept`
+- Added two new actions to `RecipeConcept`:
+  - `draftRecipeWithAI()`: Generates AI-suggested recipe modifications
+  - `applyDraft()`: Applies approved AI modifications to the recipe
+
+**Implementation Details:**
+
+The `draftRecipeWithAI()` action:
+
+- Takes a recipe and a user goal (e.g., "make this vegan", "reduce sugar by half")
+- Calls the Gemini AI API with structured prompting
+- Returns a temporary draft with suggested ingredients, steps, notes, and confidence score
+- Draft expires after 24 hours (ephemeral state)
+
+The `applyDraft()` action:
+
+- Validates that the requester is the recipe owner
+- Applies the AI-suggested ingredients and steps to the recipe
+- Appends AI modification notes to the recipe description
+- Updates the recipe's timestamp
+
+**Architectural Simplification:**
+Instead of complex concept synchronization between Recipe, Version, and VersionDraft concepts, AI features are now self-contained within Recipe with a simpler, more direct workflow.
+
+---
+
+### 3. Simplified Recipe Modification Model
+
+**What Changed:**
+
+- Pivoted from an immutable versioning model to a mutable recipe model with forking
+- Recipe modifications now update recipes in-place rather than creating new versions
+- Added `forkedFrom` field to track recipe genealogy
+
+**New Workflow:**
+
+1. User finds a recipe they want to modify
+2. User can either:
+   - Fork the recipe (creating a new recipe with `forkedFrom` link)
+   - Request AI assistance with `draftRecipeWithAI()`
+3. If using AI, user reviews the draft and can apply it with `applyDraft()`
+4. Original recipe can be modified directly by its owner
+
+**Benefits:**
+
+- More intuitive for users (similar to GitHub forks)
+- Simpler backend architecture
+- Still maintains recipe lineage through `forkedFrom` tracking
+- Reduces database complexity (no version history collections)
+
+---
+
+## Current Architecture
+
+### Core Concepts
+
+**1. User Concept**
+
+- Purpose: Represent individual users with authentication and profiles
+- Key Features:
+  - User registration and login
+  - Profile management (name, username, preferences)
+  - User lookup by username or ID
+
+**2. Recipe Concept**
+
+- Purpose: Represent canonical recipes with ingredients, steps, and metadata
+- Key Features:
+  - Recipe creation and ownership
+  - Tag-based categorization and search
+  - Recipe forking with genealogy tracking
+  - AI-assisted recipe modification (new)
+  - Direct recipe updates by owner
+
+**3. Annotation Concept**
+
+- Purpose: Capture contextual notes on specific ingredients or steps
+- Key Features:
+  - Target-specific annotations (ingredient or step)
+  - Author-based editing and deletion
+  - Resolution status tracking
+  - Recipe-based annotation queries
+
+**4. Notebook Concept**
+
+- Purpose: Organize shared collections of recipes
+- Key Features:
+  - Collaborative notebook ownership and membership
+  - Recipe sharing into notebooks
+  - Member invitation and removal
+  - Multi-notebook recipe organization
+
+**5. Step & Ingredient (Value Objects)**
+
+- Purpose: Represent recipe components as embedded data structures
+- Implementation: TypeScript interfaces embedded within Recipe documents
+- Not exposed as separate API endpoints
+
+---
+
+## Design Principles Applied
+
+### 1. Concept Self-Containment
+
+Each concept is implemented as an independent module with its own:
+
+- State (MongoDB collection)
+- Actions (public methods)
+- Queries (prefixed with `_`)
+- Type definitions (even if duplicated across concepts)
+
+This ensures modularity and independent deployability.
+
+### 2. Embedded vs. Referenced Entities
+
+- **Embedded**: `Ingredient` and `Step` are stored within Recipe documents for data locality
+- **Referenced**: Recipes, Users, Notebooks reference each other by ID
+
+### 3. AI Integration Philosophy
+
+- AI features are capabilities, not core concepts
+- Integrated directly into the concept that uses them (Recipe)
+- Ephemeral AI-generated data (drafts) handled as return values, not persistent state
+- User maintains control with explicit approval step
+
+---
+
+## API Structure
+
+All endpoints follow the pattern: `POST /api/{Concept}/{action}`
+
+**Example endpoints:**
+
+- User: `/api/User/registerUser`, `/api/User/login`
+- Recipe: `/api/Recipe/createRecipe`, `/api/Recipe/draftRecipeWithAI`, `/api/Recipe/applyDraft`
+- Annotation: `/api/Annotation/annotate`, `/api/Annotation/resolveAnnotation`
+- Notebook: `/api/Notebook/createNotebook`, `/api/Notebook/shareRecipe`
+
+Query endpoints (read-only) are prefixed with `_`:
+
+- `/api/Recipe/_getRecipeById`
+- `/api/Recipe/_listRecipesByOwner`
+- `/api/Notebook/_getNotebooksContainingRecipe`
+
+Full API specification available in [api-spec.md](api-spec.md)
+
+---
+
+## Implementation Notes
+
+### Technology Stack
+
+- **Runtime**: Deno
+- **Database**: MongoDB Atlas
+- **AI Integration**: Google Gemini API
+- **Testing**: Deno test framework
+
+### Key Implementation Decisions
+
+**1. Recipe Genealogy**
+
+- Recipes can track their origin via `forkedFrom: RecipeId`
+- Enables fork count queries and fork listing
+- Maintains recipe evolution history without full versioning
+
+**2. AI Draft Lifecycle**
+
+- AI drafts are returned as structured data, not persisted
+- 24-hour expiration communicated to frontend
+- Frontend responsible for temporary storage if needed
+- Simplifies backend state management
+
+**3. Authorization Patterns**
+
+- Recipe operations: owner-based authorization
+- Annotation operations: author can edit/delete, anyone with recipe access can resolve
+- Notebook operations: owner manages members, members can share recipes
+
+---
+
+## Testing Strategy
+
+Each concept includes comprehensive test coverage:
+
+- ✅ User: 11 test cases
+- ✅ Recipe: 24 test cases (including AI draft tests)
+- ✅ Annotation: 10 test cases
+- ✅ Notebook: 13 test cases
+
+Tests validate:
+
+- Success paths for all actions
+- Error handling and validation
+- Authorization checks
+- Data integrity constraints
+
+---
+
+## Lessons Learned
+
+### 1. Complexity vs. Practicality
+
+The removal of Version/VersionDraft concepts demonstrates the importance of:
+
+- Starting with MVP features
+- Adding complexity only when needed
+- Prioritizing frontend integration feasibility
+
+### 2. AI as Enhancement, Not Core Architecture
+
+- AI features work best when integrated into existing concepts
+- Avoid creating entire concepts just for AI workflows
+- Keep AI interactions transient where possible
+
+### 3. Concept Independence
+
+- Data structure duplication across concepts (Ingredient, Step interfaces) initially seems wasteful
+- But it ensures true concept independence and evolutionary flexibility
+- Each concept can modify its internal structures without breaking others
+
+---
+
+## Future Considerations
+
+If the application scales, the following could be reconsidered:
+
+**1. Version History**
+
+- Could add back a simplified Version concept if users demand history tracking
+- Would be simpler than original design: just snapshots without AI integration
+
+**2. Enhanced AI Features**
+
+- Multi-turn AI conversations for recipe refinement
+- AI-suggested ingredient substitutions based on dietary restrictions
+- Cooking technique explanations
+
+**3. Social Features**
+
+- Recipe ratings and reviews (could be new concepts)
+- User following/followers
+- Recipe recommendations based on user preferences
+
+---
+
+## References
+
+- Full API Specification: [api-spec.md](api-spec.md)
+- Concept Design Changes: [design/brainstorming/all-design-changes.md](design/brainstorming/all-design-changes.md)
+- Individual Concept Documentation: `design/concepts/{Concept}/`
